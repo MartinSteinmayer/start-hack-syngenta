@@ -21,27 +21,60 @@ export default function HomePage() {
     };
 
     return (
-        <div className="max-w-5xl mx-auto">
-            {/* Show the hero section if we're not in wizard mode */}
-            {!showWizard && (
-                <HeroSection onGetStarted={handleGetStarted} />
-            )}
+        <div className="relative min-h-screen">
+            {/* Persistent Background Container */}
+            <div className="fixed inset-0 z-0">
+                <Image
+                    src="/images/farm-hero.jpg"
+                    alt="Sustainable farming landscape"
+                    fill
+                    priority
+                    className="object-cover"
+                />
+                {/* Gradient overlay for text readability */}
+                <div className="absolute inset-0 bg-black/40"></div>
+            </div>
 
-            {/* Show the wizard when the user clicks "Get Started" */}
-            {showWizard && (
-                <div id="setup-wizard" className="pt-4 pb-12">
-                    <FarmSetupWizard />
-                    
-                    <div className="text-center mt-8">
-                        <button 
-                            onClick={() => setShowWizard(false)}
-                            className="text-gray-500 hover:text-gray-700 text-sm underline"
-                        >
-                            Return to home page
-                        </button>
+            {/* Header Bar */}
+            <div className="fixed top-0 left-0 right-0 z-10 bg-green-500 py-3 px-4">
+                <div className="container mx-auto max-w-5xl flex justify-between items-center">
+                    <div className="flex items-center">
+                        <span className="text-white font-bold text-xl">Farm Bio-Boost</span>
+                        <span className="text-white ml-2">Simulator</span>
+                    </div>
+                    <div className="text-white text-sm">
+                        Powered by: Syngenta
                     </div>
                 </div>
-            )}
+            </div>
+
+            {/* Content Container */}
+            <div className="relative z-5 pt-16 min-h-screen">
+                <div className="container mx-auto max-w-5xl">
+                    {/* Show the hero section if we're not in wizard mode */}
+                    {!showWizard && (
+                        <div className="flex items-center justify-center min-h-[calc(100vh-4rem)]">
+                            <HeroSection onGetStarted={handleGetStarted} />
+                        </div>
+                    )}
+
+                    {/* Show the wizard when the user clicks "Get Started" */}
+                    {showWizard && (
+                        <div id="setup-wizard" className="pt-4 pb-12">
+                            <FarmSetupWizard />
+                            
+                            <div className="text-center mt-8">
+                                <button 
+                                    onClick={() => setShowWizard(false)}
+                                    className="text-white hover:text-gray-200 text-sm underline"
+                                >
+                                    Return to home page
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </div>
         </div>
     );
 }
