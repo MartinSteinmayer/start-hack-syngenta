@@ -32,7 +32,7 @@ export const createCropTimeline = (cropData, startDate = new Date(), days = 90) 
     const { type, hectares, density, location } = cropData;
 
     // Check if location is specifically in Mato Grosso
-    const isMtGrosso = location && 
+    const isMtGrosso = location &&
         location.latitude >= -18 && location.latitude <= -7 &&
         location.longitude >= -62 && location.longitude <= -50;
 
@@ -74,7 +74,7 @@ export function convertToSimulationWeatherDays(
     return historicalData.map((day, index) => {
         // Calculate growth factor based on region and crop type
         let growthFactor;
-        
+
         if (isCerrado) {
             // Use Cerrado-specific growth model
             growthFactor = calculateCerradoGrowthFactor(
@@ -91,7 +91,7 @@ export function convertToSimulationWeatherDays(
                 day.humidity
             );
         }
-        
+
         // Determine growth stage based on growth progress
         let growthStage;
         if (growthFactor < 0.2) {
@@ -206,17 +206,17 @@ const generateGenericWeatherData = (days, startDate = new Date()) => {
                 weather === WEATHER_TYPES.CLOUDY ? 0.6 :
                     weather === WEATHER_TYPES.RAINY ? 0.4 : 0.3;
         const moistureFactor = Math.min(1.0, (baseHumidity + humidityVariance) / 70);
-        console.log('tempFactor')
-        console.log(tempFactor)
-        console.log('sunFactor')
-        console.log(sunFactor)
-        console.log('moistureFactor')
-        console.log(moistureFactor)
+        //console.log('tempFactor')
+        //console.log(tempFactor)
+        //console.log('sunFactor')
+        //console.log(sunFactor)
+        //console.log('moistureFactor')
+        //console.log(moistureFactor)
 
         // Calculate final growth factor
         const growthFactor = (tempFactor * 0.4 + sunFactor * 0.3 + moistureFactor * 0.3);
-        console.log('GrowthFactor')
-        console.log(growthFactor)
+        //console.log('GrowthFactor')
+        //console.log(growthFactor)
 
         // Get weather settings
         const settings = {
@@ -302,7 +302,7 @@ export const updatePlantsForGrowthStage = (timelineDay, plants, cropType) => {
     const { growthFactor } = timelineDay;
     const baseHeight = PLANT_HEIGHTS[cropType] || 1.0;
 
-    console.log(`Updating ${plants.length} plants for growth stage: ${timelineDay.growthStage}, percent: ${growthFactor}`);
+    //console.log(`Updating ${plants.length} plants for growth stage: ${timelineDay.growthStage}, percent: ${growthFactor}`);
 
     // Update each plant
     plants.forEach(plant => {
@@ -381,8 +381,8 @@ export const initializeTimelineController = (timeline, scene, sceneObjects, setD
 
         const dayData = timeline.days[dayIndex];
 
-        console.log('dayData')
-        console.log(dayData)
+        //console.log('dayData')
+        //console.log(dayData)
         // Determine growth stage if not already set
         if (!dayData.growthStage) {
             dayData.growthStage = determineGrowthStage(dayData.growthFactor);
@@ -462,7 +462,7 @@ export const initializeTimelineController = (timeline, scene, sceneObjects, setD
                 setAutoAdvance(true, 1000 / speedFactor);
             }
         },
-    cleanup: () => {
+        cleanup: () => {
             clearInterval(autoAdvanceInterval);
             if (rainSystem) {
                 rainSystem.dispose();

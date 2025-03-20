@@ -61,6 +61,15 @@ export default function SimulationPage() {
     const [selectedProduct, setSelectedProduct] = useState(null);
     const [appliedProducts, setAppliedProducts] = useState<any[]>([]);
 
+    // Message alerts
+    const [successMessage, setSuccessMessage] = useState('');
+    const [messageDetails, setMessageDetails] = useState({
+        growthRate: 0,
+        observations: '',
+        isSuccess: true
+    });
+    const [statusMessage, setStatusMessage] = useState('');
+
     // Track model loading progress
     useEffect(() => {
         if (!modelsLoaded) {
@@ -290,32 +299,317 @@ export default function SimulationPage() {
 
 
     // Add this handler function:
-    const handleProductSelect = (product) => {
+    const handleProductSelect = async (product) => {
+        // Store selected product and close popup
         setSelectedProduct(product);
         setIsProductsPopupOpen(false);
 
-        // Add the product to applied products list
-        setAppliedProducts(prev => [...prev, product]);
+        // Clear any existing messages
+        setErrorMessage('');
+        setSuccessMessage('');
 
-        // Here you would add logic to apply the product effects to the simulation
-        // For example, you might update growth rates, stress resistance, etc.
-        console.log(`Selected product: ${product.name}`);
+        // Show a status message to inform the user of processing
+        setStatusMessage(`Applying ${product.name} to the simulation...`);
 
-        // Display a temporary success message
-        const successMessage = `Applied ${product.name} to the simulation!`;
-        setErrorMessage(successMessage);
+        try {
+            // Call API to calculate and apply product effects
+            const effectData = await applyProductEffect(product);
 
-        // Clear the message after 3 seconds
-        setTimeout(() => {
-            if (errorMessage === successMessage) {
-                setErrorMessage('');
+            if (!effectData) {
+                throw new Error("Failed to calculate product effect");
             }
-        }, 3000);
 
-        // If you have a timeline controller, you could update plant properties here
-        if (timelineController) {
-            // Example of how you might modify the simulation:
-            // timelineController.applyProductEffect(product.name, product.effectStrength);
+            // Add the product to applied products list with metadata
+            const productWithMetadata = {
+                ...product,
+                appliedAt: new Date(),
+                appliedAtDay: timelineController ? timelineController.getCurrentDayIndex() + 1 : 1,
+                effect: {
+                    growthRateIncrease: effectData.growth_rate_increase,
+                    yieldRisk: effectData.yield_risk,
+                    observations: effectData.observations
+                }
+            };
+
+            setAppliedProducts(prev => [...prev, productWithMetadata]);
+
+            // Clear the status message
+            setStatusMessage('');
+
+            // Generate success message with effect details
+            let baseMessage = `Applied ${product.name} to the simulation!`;
+            const growthRate = effectData.growth_rate_increase !== undefined
+                ? effectData.growth_rate_increase * 100
+                : 0;
+
+            if (growthRate > 0) {
+                baseMessage += ` Growth rate increased by ${growthRate.toFixed(1)}%.`;
+            }
+
+            // Set success message with details for styling and additional info
+            setSuccessMessage(baseMessage);
+            setMessageDetails({
+                growthRate: growthRate,
+                observations: effectData.observations || '',
+                isSuccess: true
+            });
+
+            // Auto-clear success message
+            setTimeout(() => {
+                setSuccessMessage('');
+            }, 8000); // Slightly longer display time for success messages with observations
+
+        } catch (error) {
+            // Error handling logic
+            console.error('Error in product application:', error);
+
+            // Clear the status message
+            setStatusMessage('');
+
+            // Set error message
+            setErrorMessage(`Error applying ${product.name}: ${error.message}`);
+
+            // Auto-clear error message
+            setTimeout(() => setErrorMessage(''), 5000);
+        }
+    };
+
+    // Updated applyProductEffect function with robust timeline access
+    const applyProductEffect = async (product) => {
+        if (!timelineController || !currentSimulation || !location) {
+            console.error("Required simulation components not initialized");
+            return null;
+        }
+
+        // Get the current day's data
+        const currentDay = timelineController.getCurrentDay();
+        const currentDayIndex = timelineController.getCurrentDayIndex();
+
+        console.log("Current day data:", currentDay);
+
+        // Extract weather data from the current day
+        // Handle different possible structures of the temperature data
+        const weatherData = {
+            precipitation: currentDay.precipitation || 0,
+            min_temperature: typeof currentDay.temperature === 'object'
+                ? currentDay.temperature.min
+                : (currentDay.temperature - 5), // Estimate if only avg is available
+            max_temperature: typeof currentDay.temperature === 'object'
+                ? currentDay.temperature.max
+                : (currentDay.temperature + 5), // Estimate if only avg is available
+            humidity: currentDay.humidity || 50
+        };
+
+        // Fetch soil data or use defaults
+        let soilData = {
+            ph: 6.5, // Default soil pH
+            nitrogen: 0.05 // Default nitrogen content (5%)
+        };
+
+        try {
+            // Fetch soil data from the environmental data API
+            const response = await fetch(
+                `/api/environmental-data?lat=${location.latitude}&lng=${location.longitude}&type=soil`
+            );
+
+            if (response.ok) {
+                const data = await response.json();
+
+                if (data.soil && data.soil.properties) {
+                    // Extract soil properties
+                    soilData = {
+                        ph: data.soil.properties.ph || soilData.ph,
+                        // Convert organic matter percentage to nitrogen approximation
+                        nitrogen: data.soil.properties.organicMatter
+                            ? (data.soil.properties.organicMatter / 100)
+                            : soilData.nitrogen
+                    };
+                    console.log("Fetched soil data:", soilData);
+                }
+            }
+        } catch (error) {
+            console.error('Error fetching soil data:', error);
+            // Continue with default values if there's an error
+        }
+
+        // Map product name to the expected format for the API
+        // The API expects: stress_buster, yield_booster, or nue
+        let productName;
+        if (product.name === 'Stress Buster') {
+            productName = 'stress_buster';
+        } else if (product.name === 'Yield Booster') {
+            productName = 'yield_booster';
+        } else if (product.name.includes('Nutrient Use Efficiency')) {
+            productName = 'nue';
+        } else {
+            // Default case - normalize the name
+            productName = product.name.toLowerCase().replace(/\s+/g, '_');
+        }
+
+        // Prepare the request data for the API
+        const requestData = {
+            weather: weatherData,
+            crop: currentSimulation.type,
+            product: productName,
+            soil_ph: soilData.ph,
+            soil_nitrogen: soilData.nitrogen
+        };
+
+        console.log("Sending request to growth-rate API:", requestData);
+
+        try {
+            // Call the growth-rate API
+            const response = await fetch('/api/growth-rate', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(requestData)
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`API responded with status ${response.status}: ${errorText}`);
+            }
+
+            if (timelineController && !timelineController.applyGrowthRateIncrease) {
+                console.log("Extending timelineController with applyGrowthRateIncrease method");
+
+                // Add the method directly to the controller object
+                timelineController.applyGrowthRateIncrease = function(growthRateIncrease, startDayIndex) {
+                    console.log(`Custom implementation: Applying growth rate increase of ${growthRateIncrease} starting from day ${startDayIndex}`);
+
+                    // Store the current day index to return to it
+                    const currentIndex = this.getCurrentDayIndex();
+                    const totalDays = this.getTotalDays();
+
+                    try {
+                        // Process each future day
+                        for (let i = startDayIndex; i < totalDays; i++) {
+                            // Navigate to this day
+                            this.setDay(i);
+
+                            // Get the current day data
+                            const day = this.getCurrentDay();
+
+                            if (day && day.growthFactor !== undefined) {
+                                // Calculate the new growth factor
+                                const originalFactor = day.growthFactor;
+                                const newFactor = Math.min(1.0, originalFactor * (1 + growthRateIncrease));
+
+                                // Update the day's properties directly
+                                day.growthFactor = newFactor;
+                                day.growthPercent = newFactor; // For backward compatibility
+
+                                // Update growth stage based on new factor
+                                // Simple determination based on common ranges
+                                if (day.growthStage) {
+                                    if (newFactor < 0.3) {
+                                        day.growthStage = "VEGETATIVE";
+                                    } else if (newFactor < 0.6) {
+                                        day.growthStage = "REPRODUCTIVE";
+                                    } else if (newFactor < 0.8) {
+                                        day.growthStage = "GRAIN_FILLING";
+                                    } else {
+                                        day.growthStage = "MATURITY";
+                                    }
+                                }
+
+                                console.log(`Day ${i}: Modified growth factor from ${originalFactor} to ${newFactor}`);
+                            }
+                        }
+
+                        // Return to the original day
+                        this.setDay(currentIndex);
+
+                        console.log("Successfully applied growth rate increase using custom method");
+                        return true;
+                    } catch (error) {
+                        console.error("Error in custom applyGrowthRateIncrease:", error);
+                        return false;
+                    }
+                };
+
+                console.log("TimelineController successfully extended with applyGrowthRateIncrease method");
+            }
+
+            const data = await response.json();
+            console.log("Received response from growth-rate API:", data);
+
+            // Apply the growth rate increase to the timeline
+            if (data.growth_rate_increase !== undefined) {
+                console.log(`Applying growth rate increase: ${data.growth_rate_increase}`);
+
+                // FIXED: Improved approach to detect and use appropriate method
+                if (typeof timelineController.applyGrowthRateIncrease === 'function') {
+                    // Use the built-in method if available
+                    timelineController.applyGrowthRateIncrease(data.growth_rate_increase, currentDayIndex);
+                } else {
+                    // Fallback implementation with multiple access strategies
+                    console.warn("applyGrowthRateIncrease method not found, using fallback implementation");
+
+                    // Try multiple approaches to access timeline data
+                    let timelineDays = null;
+
+                    // Approach 1: Try to access through getTimeline method
+                    if (typeof timelineController.getTimeline === 'function') {
+                        const timeline = timelineController.getTimeline();
+                        if (timeline && timeline.days) {
+                            timelineDays = timeline.days;
+                        }
+                    }
+
+                    // Approach 2: Try to access through getAllDays method
+                    if (!timelineDays && typeof timelineController.getAllDays === 'function') {
+                        timelineDays = timelineController.getAllDays();
+                    }
+
+                    // Approach 3: Try to access through private _timeline property
+                    if (!timelineDays && timelineController._timeline && timelineController._timeline.days) {
+                        timelineDays = timelineController._timeline.days;
+                    }
+
+                    // Final check
+                    if (timelineDays && Array.isArray(timelineDays)) {
+                        // Apply growth rate increase to future days manually
+                        for (let i = currentDayIndex; i < timelineDays.length; i++) {
+                            const day = timelineDays[i];
+
+                            if (day.growthFactor !== undefined) {
+                                // Calculate new growth factor with the increase
+                                const originalGrowthFactor = day.growthFactor;
+                                const newGrowthFactor = Math.min(1.0, originalGrowthFactor * (1 + data.growth_rate_increase));
+
+                                // Update the day's growth factor and percent
+                                day.growthFactor = newGrowthFactor;
+                                day.growthPercent = newGrowthFactor; // For backward compatibility
+
+                                // Update growth stage if the determineGrowthStage function is available
+                                if (window.determineGrowthStage) {
+                                    day.growthStage = window.determineGrowthStage(newGrowthFactor);
+                                }
+                            }
+                        }
+
+                        // Refresh the current day
+                        if (typeof timelineController.setDay === 'function') {
+                            timelineController.setDay(currentDayIndex);
+                        }
+
+                        console.log(`Successfully applied growth rate increase using fallback implementation.`);
+                    } else {
+                        throw new Error("Unable to access timeline data using any available method");
+                    }
+                }
+            } else {
+                console.warn("API response missing growth_rate_increase value");
+            }
+
+            // Return the complete API response
+            return data;
+        } catch (error) {
+            console.error('Error applying product effect:', error);
+            throw error;
         }
     };
 
@@ -379,18 +673,58 @@ export default function SimulationPage() {
                     onSelectProduct={handleProductSelect}
                 />
 
-                {/* Option to also display applied products */}
+                {/* Enhanced Applied Products Display - Add this to app/simulation/page.tsx */}
                 {appliedProducts.length > 0 && (
-                    <div className="absolute bottom-4 right-4 z-20 bg-white bg-opacity-80 p-3 rounded-lg shadow">
-                        <h3 className="font-medium text-sm mb-1">Applied Products:</h3>
-                        <ul className="text-xs">
+                    <div className="absolute bottom-[250px] right-4 z-20 bg-white bg-opacity-95 p-4 rounded-lg shadow-lg max-w-xs">
+                        <h3 className="font-medium text-green-700 mb-2">Applied Products</h3>
+                        <ul className="space-y-3">
                             {appliedProducts.map((product, index) => (
-                                <li key={index} className="flex items-center">
-                                    <span className="w-2 h-2 bg-green-500 rounded-full mr-1"></span>
-                                    {product.name}
+                                <li key={index} className="border-b border-gray-100 pb-2 last:border-b-0 last:pb-0">
+                                    <div className="flex items-start">
+                                        <div className="flex items-center mt-0.5">
+                                            <span className="w-2 h-2 bg-green-500 rounded-full mr-2 flex-shrink-0"></span>
+                                        </div>
+                                        <div className="flex-1">
+                                            <div className="font-medium text-sm">{product.name}</div>
+                                            <div className="text-gray-600 text-xs flex flex-wrap">
+                                                <span className="mr-2">{product.category}</span>
+                                                <span>Day {product.appliedAtDay || '?'}</span>
+                                            </div>
+
+                                            {/* Show effects if available */}
+                                            {product.effect && product.effect.growthRateIncrease !== undefined && (
+                                                <div className="mt-1 bg-green-50 p-1.5 rounded text-xs">
+                                                    <div className="flex justify-between text-green-800">
+                                                        <span>Growth boost:</span>
+                                                        <span className="font-medium">
+                                                            +{(product.effect.growthRateIncrease * 100).toFixed(1)}%
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
                                 </li>
                             ))}
                         </ul>
+
+                        {/* Add totals if multiple products applied */}
+                        {appliedProducts.length > 1 && (
+                            <div className="mt-3 pt-2 border-t border-gray-200 text-xs font-medium">
+                                <div className="flex justify-between text-green-800">
+                                    <span>Total Growth Enhancement:</span>
+                                    <span>
+                                        {(() => {
+                                            // Calculate cumulative effect (simplified)
+                                            const totalEffect = appliedProducts.reduce((total, product) => {
+                                                return total + ((product.effect?.growthRateIncrease || 0) * 100);
+                                            }, 0);
+                                            return `+${totalEffect.toFixed(1)}%`;
+                                        })()}
+                                    </span>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 )}
 
@@ -419,6 +753,45 @@ export default function SimulationPage() {
                         <button
                             className="ml-3 text-white font-bold"
                             onClick={() => setErrorMessage('')}
+                        >
+                            ×
+                        </button>
+                    </div>
+                )}
+
+                {/* Success message with contextual styling */}
+                {successMessage && (
+                    <div className={`absolute top-20 right-4 p-3 ${messageDetails.growthRate > 2 ? 'bg-green-600' : 'bg-red-600'
+                        } text-white rounded shadow-lg max-w-md z-20`}>
+                        <div className="flex justify-between items-start">
+                            <div className="flex-1">
+                                <p>{successMessage}</p>
+                                {messageDetails.observations && (
+                                    <p className="mt-2 text-sm border-t border-white/20 pt-2">
+                                        <strong>Analysis:</strong> {messageDetails.observations}
+                                    </p>
+                                )}
+                            </div>
+                            <button
+                                className="ml-3 text-white font-bold"
+                                onClick={() => setSuccessMessage('')}
+                            >
+                                ×
+                            </button>
+                        </div>
+                    </div>
+                )}
+                {/* Status/Processing message */}
+                {statusMessage && (
+                    <div className="absolute top-20 right-4 p-3 bg-blue-600 text-white rounded shadow-lg max-w-md z-20 flex justify-between items-start">
+                        <div className="flex items-center">
+                            {/* Animated loading spinner */}
+                            <div className="mr-3 animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
+                            <p>{statusMessage}</p>
+                        </div>
+                        <button
+                            className="ml-3 text-white font-bold"
+                            onClick={() => setStatusMessage('')}
                         >
                             ×
                         </button>

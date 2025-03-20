@@ -170,19 +170,73 @@ const FarmSetupWizard = () => {
                             Choose the crop type you want to simulate on your farm.
                         </p>
 
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            {['corn', 'soybean', 'wheat'].map((crop) => (
+                        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                            {['corn', 'soybean', 'wheat', 'cotton', 'rice'].map((crop) => (
                                 <div
                                     key={crop}
                                     onClick={() => handleCropSelection(crop)}
                                     className={`p-4 border rounded-lg cursor-pointer transition-all ${cropType === crop
-                                        ? 'border-green-500 bg-green-50 shadow-md'
-                                        : 'border-gray-200 hover:border-green-300 hover:bg-green-50'
+                                            ? 'border-green-500 bg-green-50 shadow-md'
+                                            : 'border-gray-200 hover:border-green-300 hover:bg-green-50'
                                         }`}
                                 >
                                     <div className="text-center">
-                                        <div className="text-3xl mb-2">
-                                            {crop === 'corn' ? '🌽' : crop === 'soybean' ? '🌱' : '🌾'}
+                                        <div className="h-16 flex items-center justify-center mb-2">
+                                            {crop === 'corn' && (
+                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-12 h-12">
+                                                    <path d="M12,2c0,0-3,4-3,9c0,1.81,0.4,3.27,1,4.5V21h4v-5.5c0.6-1.23,1-2.69,1-4.5C15,6,12,2,12,2z" fill="#F9D423" />
+                                                    <path d="M12,2C12,2,9,6,9,11c0,1.81,0.4,3.27,1,4.5V21h2V2z" fill="#F4A261" />
+                                                    <path d="M14,12c0.36-0.55,1.56-0.74,1.6-1.5c-0.04-0.76-1.24-0.95-1.6-1.5c-0.36,0.55-1.56,0.74-1.6,1.5C12.44,11.26,13.64,11.45,14,12z" fill="#4CAF50" />
+                                                    <path d="M10,8c0.36-0.55,1.56-0.74,1.6-1.5c-0.04-0.76-1.24-0.95-1.6-1.5c-0.36,0.55-1.56,0.74-1.6,1.5C8.44,7.26,9.64,7.45,10,8z" fill="#4CAF50" />
+                                                    <path d="M10,16c0.36-0.55,1.56-0.74,1.6-1.5c-0.04-0.76-1.24-0.95-1.6-1.5c-0.36,0.55-1.56,0.74-1.6,1.5C8.44,15.26,9.64,15.45,10,16z" fill="#4CAF50" />
+                                                </svg>
+                                            )}
+                                            {crop === 'soybean' && (
+                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-12 h-12">
+                                                    <path d="M12,2c-1.1,0-2,0.9-2,2c0,0.74,0.4,1.38,1,1.72V7h2V5.72c0.6-0.34,1-0.98,1-1.72C14,2.9,13.1,2,12,2z" fill="#4CAF50" />
+                                                    <path d="M13,7v2c1.66,0,3,1.34,3,3c0,0.35-0.06,0.69-0.17,1L13,13v4c0,1.1-0.9,2-2,2s-2-0.9-2-2v-6c0-1.66,1.34-3,3-3H13z" fill="#81C784" />
+                                                    <path d="M15.83,13c-0.42,1.18-1.52,2-2.83,2c-1.66,0-3-1.34-3-3c0-1.31,0.83-2.42,2-2.83V7.1C9.23,7.35,7,9.7,7,12.5c0,2.76,2.24,5,5,5 s5-2.24,5-5c0-0.93-0.26-1.8-0.7-2.54L15.83,13z" fill="#388E3C" />
+                                                    <ellipse cx="16" cy="12.5" rx="1.5" ry="2.5" fill="#81C784" />
+                                                    <ellipse cx="8" cy="12.5" rx="1.5" ry="2.5" fill="#81C784" />
+                                                </svg>
+                                            )}
+                                            {crop === 'wheat' && (
+                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-12 h-12">
+                                                    <path d="M12,2v20" stroke="#8D6E63" strokeWidth="1.5" fill="none" />
+                                                    <path d="M12,4c0,0,2-1,4,0c2,1,0,3,0,3" stroke="#FFC107" strokeWidth="1" fill="none" />
+                                                    <path d="M12,6c0,0,2-1,4,0c2,1,0,3,0,3" stroke="#FFC107" strokeWidth="1" fill="none" />
+                                                    <path d="M12,8c0,0,2-1,4,0c2,1,0,3,0,3" stroke="#FFC107" strokeWidth="1" fill="none" />
+                                                    <path d="M12,4c0,0,-2-1,-4,0c-2,1,0,3,0,3" stroke="#FFC107" strokeWidth="1" fill="none" />
+                                                    <path d="M12,6c0,0,-2-1,-4,0c-2,1,0,3,0,3" stroke="#FFC107" strokeWidth="1" fill="none" />
+                                                    <path d="M12,8c0,0,-2-1,-4,0c-2,1,0,3,0,3" stroke="#FFC107" strokeWidth="1" fill="none" />
+                                                    <path d="M12,12c0,0,0,0,0,0c-2-2-5,0-5,0c2,2,5,0,5,0Z" fill="#FFC107" />
+                                                    <path d="M12,14c0,0,0,0,0,0c-2-2-5,0-5,0c2,2,5,0,5,0Z" fill="#FFC107" />
+                                                    <path d="M12,12c0,0,0,0,0,0c2-2,5,0,5,0c-2,2-5,0-5,0Z" fill="#FFC107" />
+                                                    <path d="M12,14c0,0,0,0,0,0c2-2,5,0,5,0c-2,2-5,0-5,0Z" fill="#FFC107" />
+                                                </svg>
+                                            )}
+                                            {crop === 'cotton' && (
+                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-12 h-12">
+                                                    <path d="M12,21V11" stroke="#8D6E63" strokeWidth="1" fill="none" />
+                                                    <path d="M10,10c0-2.21,1.79-4,4-4s4,1.79,4,4s-1.79,4-4,4" stroke="#8D6E63" strokeWidth="0.75" fill="none" />
+                                                    <path d="M14,10c0-2.21-1.79-4-4-4S6,7.79,6,10s1.79,4,4,4" stroke="#8D6E63" strokeWidth="0.75" fill="none" />
+                                                    <circle cx="12" cy="10" r="5" fill="#F5F5F5" />
+                                                    <path d="M12,5c-2.76,0-5,2.24-5,5s2.24,5,5,5s5-2.24,5-5S14.76,5,12,5z M12,13c-1.66,0-3-1.34-3-3s1.34-3,3-3s3,1.34,3,3 S13.66,13,12,13z" fill="#EEEEEE" />
+                                                    <circle cx="12" cy="10" r="2" fill="#E0E0E0" />
+                                                    <path d="M14,12l2,2M10,12l-2,2M14,8l2-2M10,8L8,6" stroke="#BDBDBD" strokeWidth="0.5" fill="none" />
+                                                </svg>
+                                            )}
+                                            {crop === 'rice' && (
+                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-12 h-12">
+                                                    <path d="M12,21V6" stroke="#8D6E63" strokeWidth="1.5" fill="none" />
+                                                    <path d="M10,7c0,0-1-3,2-5c3,2,2,5,2,5" fill="#4CAF50" />
+                                                    <path d="M7,9c0,0-2-2,0-5c3,1,3,3,3,3" fill="#4CAF50" />
+                                                    <path d="M17,9c0,0,2-2,0-5c-3,1-3,3-3,3" fill="#4CAF50" />
+                                                    <path d="M12,10c0,0,0,0-3,3c0,2,6,2,6,0C12,10,12,10,12,10z" fill="#FFC107" />
+                                                    <path d="M12,13c0,0,0,0-3,3c0,2,6,2,6,0C12,13,12,13,12,13z" fill="#FFC107" />
+                                                    <path d="M12,16c0,0,0,0-2,2c0,1,4,1,4,0C12,16,12,16,12,16z" fill="#FFC107" />
+                                                </svg>
+                                            )}
                                         </div>
                                         <div className="font-medium capitalize">{crop}</div>
                                     </div>
