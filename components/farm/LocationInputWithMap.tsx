@@ -183,7 +183,7 @@ const LocationInputWithMap: React.FC<LocationInputWithMapProps> = ({
             <h3 className="text-lg font-semibold mb-2 text-green-800">Location Settings</h3>
 
             {/* Map for visual selection */}
-            <div className="mb-4 rounded-lg overflow-hidden border border-gray-300" ref={mapContainerRef}>
+            <div className="mb-4 rounded-lg overflow-hidden border h-[300px] border-gray-300" ref={mapContainerRef}>
                 <div className="bg-green-800 text-white py-1 px-3 text-sm">
                     Click on map to set farm location
                 </div>
@@ -237,45 +237,6 @@ const LocationInputWithMap: React.FC<LocationInputWithMapProps> = ({
                 {error && <p className="text-red-500 text-sm mt-1">{error}</p>}
             </div>
 
-            {/* Or enter coordinates manually */}
-            <div className="mb-3">
-                <label className="block text-sm font-medium mb-1">Or enter coordinates:</label>
-                <div className="grid grid-cols-2 gap-2">
-                    <div>
-                        <input
-                            type="number"
-                            value={latitude}
-                            onChange={(e) => setLatitude(parseFloat(e.target.value))}
-                            placeholder="Latitude"
-                            min="-90"
-                            max="90"
-                            step="0.000001"
-                            className="w-full p-2 border rounded"
-                            disabled={disabled}
-                        />
-                    </div>
-                    <div>
-                        <input
-                            type="number"
-                            value={longitude}
-                            onChange={(e) => setLongitude(parseFloat(e.target.value))}
-                            placeholder="Longitude"
-                            min="-180"
-                            max="180"
-                            step="0.000001"
-                            className="w-full p-2 border rounded"
-                            disabled={disabled}
-                        />
-                    </div>
-                </div>
-                <button
-                    onClick={handleManualCoordinates}
-                    className="mt-2 bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600"
-                    disabled={!latitude || !longitude || disabled}
-                >
-                    Set Location
-                </button>
-            </div>
 
             {/* Display current location */}
             {locationName && (

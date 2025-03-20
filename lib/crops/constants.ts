@@ -15,7 +15,7 @@ export const PLANTS_PER_HECTARE = {
 export const PLANT_HEIGHTS = {
     corn: 2.5,      // 2.5 meters at full growth
     wheat: 0.8,     // 0.8 meters at full growth
-    soybean: 1.0,   // 1.0 meters at full growth
+    soybean: 1.5,   // 1.0 meters at full growth
     cotton: 1.2,    // 1.2 meters at full growth
     rice: 1.0       // 1.0 meters at full growth
 };

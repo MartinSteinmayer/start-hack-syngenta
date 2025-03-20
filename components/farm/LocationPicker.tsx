@@ -108,15 +108,6 @@ export default function LocationPicker({ value, onChange, className = '' }: Loca
             {/* Map Component - Dynamically loaded on client-side only */}
             <MapComponentWithNoSSR location={value} onLocationChange={onChange} />
 
-            {/* Coordinate Display */}
-            <div className="mt-2 flex justify-between text-sm text-gray-500">
-                <span>Latitude: {value.lat.toFixed(6)}</span>
-                <span>Longitude: {value.lng.toFixed(6)}</span>
-            </div>
-
-            <div className="mt-2 text-xs text-gray-500">
-                Tip: Click on the map to set location or use the search box above
-            </div>
         </div>
     );
 }
