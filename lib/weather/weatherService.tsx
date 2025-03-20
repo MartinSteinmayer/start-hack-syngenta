@@ -1,6 +1,174 @@
 // lib/weather/weatherService.ts
 
+
 // List of standardized weather types
+
+export function generateCerradoWeather(
+  latitude, 
+  longitude, 
+  startDate, 
+  days
+) {
+  const weatherData = [];
+  const currentDate = new Date(startDate);
+  
+  // Cerrado climate characteristics:
+  // - Distinct wet season (October-April) and dry season (May-September)
+  // - Hot temperatures year-round, with slightly cooler in dry season
+  // - Very high humidity in wet season, very low in dry season
+  
+  for (let i = 0; i < days; i++) {
+    const date = new Date(currentDate);
+    
+    // Determine season based on month in Southern Hemisphere
+    const month = date.getMonth();
+    
+    // Wet season: October (9) through April (3)
+    // Dry season: May (4) through September (8)
+    const isWetSeason = (month >= 9 || month <= 3);
+    
+    // Base temperature for Cerrado (generally hot)
+    // Slightly cooler in dry season, especially June-July
+    let baseTemp;
+    if (month >= 4 && month <= 7) {
+      // Dry season cooler months (May-August)
+      baseTemp = 25 + Math.random() * 3; // 25-28°C
+    } else {
+      // Wet season and dry season transition months
+      baseTemp = 28 + Math.random() * 4; // 28-32°C
+    }
+    
+    // Weather determination with seasonal probability
+    let weatherType;
+    const rand = Math.random();
+    
+    if (isWetSeason) {
+      // Wet season: Higher probability of rain and clouds
+      if (rand < 0.3) weatherType = 'partly_cloudy';
+      else if (rand < 0.6) weatherType = 'cloudy';
+      else if (rand < 0.9) weatherType = 'rainy';
+      else weatherType = 'stormy';
+    } else {
+      // Dry season: Higher probability of sun and clear skies
+      if (rand < 0.6) weatherType = 'sunny';
+      else if (rand < 0.9) weatherType = 'partly_cloudy';
+      else weatherType = 'cloudy'; // Very rare rain in dry season
+    }
+    
+    // Temperature adjustments based on weather
+    let tempModifier = 0;
+    switch (weatherType) {
+      case 'sunny': tempModifier = 2; break;
+      case 'partly_cloudy': tempModifier = 0; break;
+      case 'cloudy': tempModifier = -1; break;
+      case 'rainy': tempModifier = -2; break;
+      case 'stormy': tempModifier = -4; break;
+    }
+    
+    // Add small random variation
+    const tempVariance = (Math.random() * 2) - 1; // -1 to +1 degrees
+    
+    // Humidity based on season and weather
+    let baseHumidity;
+    if (isWetSeason) {
+      // Wet season: high humidity
+      baseHumidity = 75 + Math.random() * 20; // 75-95%
+    } else {
+      // Dry season: low humidity
+      baseHumidity = 30 + Math.random() * 20; // 30-50%
+    }
+    
+    // Adjust humidity based on weather type
+    let humidityModifier = 0;
+    switch (weatherType) {
+      case 'sunny': humidityModifier = -10; break;
+      case 'partly_cloudy': humidityModifier = 0; break;
+      case 'cloudy': humidityModifier = 5; break;
+      case 'rainy': humidityModifier = 15; break;
+      case 'stormy': humidityModifier = 20; break;
+    }
+    
+    // Calculate final humidity with bounds
+    const finalHumidity = Math.min(95, Math.max(20, baseHumidity + humidityModifier));
+    
+    // Calculate growth factor based on Cerrado-specific conditions
+    // Plants in Cerrado are adapted to seasonal drought and fire cycles
+    const tempFactor = 1 - Math.abs(28 - (baseTemp + tempModifier + tempVariance)) / 28;
+    
+    // In Cerrado, some crops do best with moderate water during wet season
+    // Too much rain can cause problems, while dry season requires irrigation
+    const sunFactor = weatherType === 'sunny' ? 0.9 : 
+                    weatherType === 'partly_cloudy' ? 1.0 : // optimal
+                    weatherType === 'cloudy' ? 0.8 : 
+                    weatherType === 'rainy' ? 0.6 : 0.3;
+    
+    // Moisture is critical - Cerrado soils drain quickly and dry season is very dry
+    const moistureFactor = Math.min(1.0, finalHumidity / 70) * 
+                         (finalHumidity <= 90 ? 1 : 0.7); // Too much humidity can cause fungal issues
+    
+    // Adjust growthFactor weights for Cerrado (moisture is more important)
+    const growthFactor = Math.max(0, Math.min(1, 
+      (tempFactor * 0.3) + (sunFactor * 0.3) + (moistureFactor * 0.4)
+    ));
+    
+    // Get appropriate weather settings
+    const settings = {
+      [weatherType]: {
+        skyColor: weatherType === 'sunny' ? 0x87ceeb : 
+                 weatherType === 'partly_cloudy' ? 0x87ceeb : 
+                 weatherType === 'cloudy' ? 0xa3b5c7 : 
+                 weatherType === 'rainy' ? 0x708090 : 0x4a5259,
+        fogColor: weatherType === 'sunny' ? 0xd7f0ff : 
+                weatherType === 'partly_cloudy' ? 0xd7f0ff : 
+                weatherType === 'cloudy' ? 0xc7c7c7 : 
+                weatherType === 'rainy' ? 0xa3a3a3 : 0x7a7a7a,
+        fogDensity: weatherType === 'sunny' ? 0.0025 : 
+                   weatherType === 'partly_cloudy' ? 0.003 : 
+                   weatherType === 'cloudy' ? 0.004 : 
+                   weatherType === 'rainy' ? 0.006 : 0.008,
+        lightIntensity: weatherType === 'sunny' ? 1.0 : 
+                      weatherType === 'partly_cloudy' ? 0.8 : 
+                      weatherType === 'cloudy' ? 0.6 : 
+                      weatherType === 'rainy' ? 0.5 : 0.4,
+        ambientIntensity: weatherType === 'sunny' ? 0.6 : 
+                        weatherType === 'partly_cloudy' ? 0.5 : 
+                        weatherType === 'cloudy' ? 0.4 : 
+                        weatherType === 'rainy' ? 0.3 : 0.2,
+        rainParticles: weatherType === 'sunny' ? 0 : 
+                     weatherType === 'partly_cloudy' ? 0 : 
+                     weatherType === 'cloudy' ? 0 : 
+                     weatherType === 'rainy' ? 1000 : 2000,
+        cloudOpacity: weatherType === 'sunny' ? 0.8 : 
+                    weatherType === 'partly_cloudy' ? 0.9 : 
+                    weatherType === 'cloudy' ? 1.0 : 
+                    weatherType === 'rainy' ? 1.0 : 1.0,
+        cloudCount: weatherType === 'sunny' ? 5 : 
+                  weatherType === 'partly_cloudy' ? 15 : 
+                  weatherType === 'cloudy' ? 30 : 
+                  weatherType === 'rainy' ? 35 : 40,
+      }
+    };
+    
+    weatherData.push({
+      date: date.toISOString().split('T')[0],
+      temperature: Math.round((baseTemp + tempModifier + tempVariance) * 10) / 10,
+      humidity: Math.round(finalHumidity),
+      weatherType: weatherType,
+      windSpeed: isWetSeason ? 2 + Math.random() * 3 : 4 + Math.random() * 5, // Stronger winds in dry season
+      growthFactor: growthFactor,
+      settings: settings[weatherType]
+    });
+    
+    // Move to next day
+    currentDate.setDate(currentDate.getDate() + 1);
+  }
+  
+  return weatherData;
+}
+
+
+
+
 export const WEATHER_TYPES = {
     SUNNY: 'sunny',
     PARTLY_CLOUDY: 'partly_cloudy',
@@ -353,4 +521,28 @@ export const WEATHER_TYPES = {
       weatherType: mapWeatherCodeToType(weatherCode),
       windSpeed: apiResponse.wind.speed
     };
+  }
+
+
+  export function enhancedGenerateHistoricalWeather(
+    latitude, 
+    longitude, 
+    startDate, 
+    days
+  ) {
+    // Check if the location is in Mato Grosso, Brazil (approximate coordinates)
+    // Mato Grosso latitude range: -7 to -18
+    // Mato Grosso longitude range: -50 to -62
+    const isMtGrosso = (
+      latitude >= -18 && latitude <= -7 &&
+      longitude >= -62 && longitude <= -50
+    );
+    
+    if (isMtGrosso) {
+      console.log("Using Cerrado climate model for Mato Grosso region");
+      return generateCerradoWeather(latitude, longitude, startDate, days);
+    } else {
+      // Use the original function for other regions
+      return generateHistoricalWeather(latitude, longitude, startDate, days);
+    }
   }

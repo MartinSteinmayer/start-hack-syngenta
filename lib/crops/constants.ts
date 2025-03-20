@@ -67,3 +67,145 @@ export const calculateGridDimensions = (cropType: string, fieldWidthMeters: numb
         plantSpacing
     };
 };
+
+
+export const CERRADO_GROWTH_FACTORS = {
+    // Different crops require different optimization strategies in Cerrado
+    corn: {
+      temperature: {
+        optimal: 28, // Optimal temperature for corn in Cerrado is higher
+        tolerance: 6  // Tolerance range +/- in degrees
+      },
+      moisture: {
+        optimal: 65, // Optimal humidity percentage
+        drought_resistant: true // Corn varieties in Cerrado are bred for drought resistance
+      },
+      growth_cycle: {
+        seedling_days: 10,
+        vegetative_days: 40,
+        reproductive_days: 30,
+        mature_days: 15
+      }
+    },
+    soybean: {
+      temperature: {
+        optimal: 27, // Optimal temperature for soybean in Cerrado
+        tolerance: 5
+      },
+      moisture: {
+        optimal: 60,
+        drought_resistant: true
+      },
+      growth_cycle: {
+        seedling_days: 8,
+        vegetative_days: 35,
+        reproductive_days: 35,
+        mature_days: 20
+      }
+    },
+    cotton: {
+      temperature: {
+        optimal: 30, // Cotton prefers hotter conditions
+        tolerance: 7
+      },
+      moisture: {
+        optimal: 50, // Can handle drier conditions well
+        drought_resistant: true
+      },
+      growth_cycle: {
+        seedling_days: 15,
+        vegetative_days: 45,
+        reproductive_days: 40,
+        mature_days: 25
+      }
+    },
+    rice: {
+      temperature: {
+        optimal: 29,
+        tolerance: 4
+      },
+      moisture: {
+        optimal: 80, // Needs more water
+        drought_resistant: false
+      },
+      growth_cycle: {
+        seedling_days: 12,
+        vegetative_days: 30,
+        reproductive_days: 35,
+        mature_days: 18
+      }
+    },
+    wheat: {
+      temperature: {
+        optimal: 25, // Lower optimal temp, challenging in Cerrado
+        tolerance: 4
+      },
+      moisture: {
+        optimal: 55,
+        drought_resistant: false // Wheat struggles more during dry season
+      },
+      growth_cycle: {
+        seedling_days: 10,
+        vegetative_days: 30,
+        reproductive_days: 28,
+        mature_days: 15
+      }
+    }
+  };
+  
+  /**
+   * Calculate growth factor for crops in Cerrado region
+   * @param {string} cropType - Type of crop
+   * @param {number} temperature - Current temperature
+   * @param {number} humidity - Current humidity
+   * @param {string} weatherType - Current weather type
+   * @returns {number} - Growth factor between 0-1
+   */
+  export function calculateCerradoGrowthFactor(cropType, temperature, humidity, weatherType) {
+    const cropSettings = CERRADO_GROWTH_FACTORS[cropType] || CERRADO_GROWTH_FACTORS.corn;
+    
+    // Temperature factor calculation - bell curve around optimal
+    const tempDiff = Math.abs(temperature - cropSettings.temperature.optimal);
+    const tempFactor = Math.max(0, 1 - (tempDiff / cropSettings.temperature.tolerance));
+    
+    // Moisture/humidity factor calculation
+    let moistureFactor;
+    if (cropSettings.moisture.drought_resistant) {
+      // Drought resistant crops can handle lower humidity better
+      moistureFactor = humidity < cropSettings.moisture.optimal 
+        ? Math.max(0.4, humidity / cropSettings.moisture.optimal)
+        : 1 - ((humidity - cropSettings.moisture.optimal) / 50);
+    } else {
+      // Non-drought resistant crops need more consistent moisture
+      moistureFactor = humidity < cropSettings.moisture.optimal
+        ? Math.max(0.2, humidity / cropSettings.moisture.optimal)
+        : 1 - ((humidity - cropSettings.moisture.optimal) / 40);
+    }
+    moistureFactor = Math.max(0, Math.min(1, moistureFactor));
+    
+    // Sunlight factor based on weather
+    const sunFactor = weatherType === 'sunny' ? 1.0 : 
+                     weatherType === 'partly_cloudy' ? 0.9 : 
+                     weatherType === 'cloudy' ? 0.7 : 
+                     weatherType === 'rainy' ? 0.5 : 0.3;
+                     
+    // Calculating final growth factor with appropriate weights
+    // In Cerrado, temperature and moisture are especially critical
+    let growthFactor = (tempFactor * 0.4) + (moistureFactor * 0.4) + (sunFactor * 0.2);
+    
+    // Additional Cerrado-specific adjustments:
+    // Growth boost for crops during optimal season
+    // Corn and soybean thrive in wet season, cotton can handle dry season better
+    const currentMonth = new Date().getMonth();
+    const isWetSeason = (currentMonth >= 9 || currentMonth <= 3);
+    
+    if (cropType === 'corn' || cropType === 'soybean' || cropType === 'rice') {
+      growthFactor *= isWetSeason ? 1.1 : 0.9;
+    } else if (cropType === 'cotton') {
+      growthFactor *= isWetSeason ? 1.0 : 1.0; // Cotton is adaptable
+    } else if (cropType === 'wheat') {
+      growthFactor *= isWetSeason ? 0.9 : 1.0; // Wheat does a bit better in drier conditions
+    }
+    
+    return Math.max(0, Math.min(1, growthFactor));
+  }

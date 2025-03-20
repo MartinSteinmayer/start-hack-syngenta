@@ -3,11 +3,13 @@
 import * as THREE from 'three';
 import {
     generateHistoricalWeather,
-    convertToSimulationWeatherDays,
     WEATHER_TYPES
 } from '../weather/weatherService';
 import { applyWeatherToScene, RainSystem } from '../weather';
 import { PLANT_HEIGHTS } from '../crops';
+
+import { enhancedGenerateHistoricalWeather } from '../weather/weatherService';
+import { calculateCerradoGrowthFactor } from '../crops/constants';
 
 
 
@@ -29,29 +31,96 @@ const GROWTH_STAGES = {
 export const createCropTimeline = (cropData, startDate = new Date(), days = 90) => {
     const { type, hectares, density, location } = cropData;
 
+    // Check if location is specifically in Mato Grosso
+    const isMtGrosso = location && 
+        location.latitude >= -18 && location.latitude <= -7 &&
+        location.longitude >= -62 && location.longitude <= -50;
+
     // Generate weather data based on location
     let weatherData;
     if (location && location.latitude !== undefined && location.longitude !== undefined) {
-        const historicalWeather = generateHistoricalWeather(
+        // Use enhanced weather generator that supports Cerrado
+        const historicalWeather = enhancedGenerateHistoricalWeather(
             location.latitude,
             location.longitude,
             startDate,
             days
         );
-        weatherData = convertToSimulationWeatherDays(historicalWeather);
+        weatherData = convertToSimulationWeatherDays(historicalWeather, type, isMtGrosso);
     } else {
         // Fallback to generic weather data if location is not provided
         weatherData = generateGenericWeatherData(days, startDate);
     }
+
+    // Add Mato Grosso flag to help with UI special cases
+    const isMatoGrosso = isMtGrosso;
 
     return {
         type,
         hectares,
         density,
         location: location || null,
-        days: weatherData
+        days: weatherData,
+        isMatoGrosso  // Flag to indicate we're using Cerrado climate model
     };
 };
+
+
+export function convertToSimulationWeatherDays(
+    historicalData,
+    cropType = 'corn',
+    isCerrado = false
+) {
+    return historicalData.map((day, index) => {
+        // Calculate growth factor based on region and crop type
+        let growthFactor;
+        
+        if (isCerrado) {
+            // Use Cerrado-specific growth model
+            growthFactor = calculateCerradoGrowthFactor(
+                cropType,
+                day.temperature,
+                day.humidity,
+                day.weatherType
+            );
+        } else {
+            // Use standard growth model
+            growthFactor = calculateGrowthFactor(
+                day.temperature,
+                day.weatherType,
+                day.humidity
+            );
+        }
+        
+        // Determine growth stage based on growth progress
+        let growthStage;
+        if (growthFactor < 0.2) {
+            growthStage = 'SEEDLING';
+        } else if (growthFactor < 0.6) {
+            growthStage = 'VEGETATIVE';
+        } else if (growthFactor < 0.9) {
+            growthStage = 'REPRODUCTIVE';
+        } else {
+            growthStage = 'MATURE';
+        }
+
+        return {
+            date: new Date(day.date),
+            dayNumber: index + 1,
+            dateString: new Date(day.date).toLocaleDateString(),
+            weather: day.weatherType,
+            temperature: day.temperature,
+            humidity: day.humidity,
+            growthFactor: growthFactor,
+            growthStage: growthStage,
+            growthPercent: growthFactor, // For backward compatibility
+            settings: day.settings || WEATHER_SETTINGS[day.weatherType],
+            isCerrado: isCerrado // Flag to indicate using Cerrado model
+        };
+    });
+}
+
+
 
 // Fallback function to generate generic weather data
 const generateGenericWeatherData = (days, startDate = new Date()) => {
