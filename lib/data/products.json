@@ -1,0 +1,202 @@
+{
+  "products": [
+    {
+      "name": "Stress Buster",
+      "category": "Biostimulant",
+      "type": "Anti-stress and growth activator",
+      "application_method": "Foliar application",
+      "timing": "As soon as a stress event is predicted",
+      "composition": "Complex of selected vegetal extracts derived from selected plants",
+      "description": "When applied in case of abiotic stresses, its synergistic action of different active ingredients allows plants to tolerate and quickly overcome the stress, preserving yield. Applied regularly in normal condition, optimizes plant growth.",
+      "directions_for_use": {
+        "fruit_crops": {
+          "dose": "2-3 l/ha",
+          "period": "pre-flowering, post-setting, fruit development and in all cases of plant growth stop"
+        },
+        "vegetable": {
+          "dose": "2-3 l/ha",
+          "period": "in open field and greenhouses after transplant every 10-15 days"
+        },
+        "row_crops": {
+          "dose": "2-3 l/ha (150-250 mL/hL)",
+          "period": "1-2 applications during growth cycle in case of abiotic stresses"
+        }
+      },
+      "scientific_evidence": {
+        "transcriptomics": {
+          "non_stressed_plants": "Treated plants show activation of >100 genes (FC >3) vs. Control, mainly involved in: i) abiotic stress response/tolerance (\"hardening effect\" against abiotic stress), ii) activation of plant metabolism (thus better growth)",
+          "drought_stressed_plants": "Pre-treated with stress buster show a decreased expression of stress-related marker genes during stress conditions, showing a lower perception of the stress itself (\"acclimated plants\"; Petrozza et al., 2014)"
+        },
+        "phenomics": {
+          "improvements": [
+            "Digital Biovolume/Biomass",
+            "Health Index (less Stress Index)",
+            "Water content",
+            "Other indexes: Green/Yellow Index, etc"
+          ]
+        },
+        "metabolomics": "METABOLOMICS has also been used recently, to highlight the action of Stress Buster in stress conditions. It has been observed that the product is capable of modulating specific classes of metabolites, connected to the response to abiotic stress."
+      },
+      "field_trial_results": {
+        "crop_performance": {
+          "row_crops": {
+            "yield_increase": "+ 0,30 t/ha",
+            "roi": "3,9:1"
+          },
+          "vegetable": {
+            "yield_increase": "+ 2,3 t/ha",
+            "roi": "11,6:1"
+          },
+          "fruit_crops": {
+            "yield_increase": "+ 1,2 t/ha",
+            "roi": "10,5:1"
+          }
+        },
+        "stress_conditions": {
+          "cold": {
+            "evidences": 10,
+            "win_rate": "70%",
+            "yield_increase": "+5%"
+          },
+          "heat": {
+            "evidences": 26,
+            "win_rate": "76,9%",
+            "yield_increase": "+8,2%"
+          },
+          "drought": {
+            "evidences": 433,
+            "win_rate": "70,7%",
+            "yield_increase": "+5,1%"
+          }
+        },
+        "notes": "850 selected trials for the summary, of which 68% were carried out under abiotic stress conditions."
+      }
+    },
+    {
+      "name": "Yield Booster",
+      "category": "Biostimulant",
+      "type": "Crop productivity enhancer",
+      "application_method": "Foliar application",
+      "timing": "Decision taken before the growing season based on historical data and upcoming season prediction",
+      "description": "In our portfolio we have a biostimulant for row crops able to ensure highest productivity and return for farmers. This solution is able to increase plant productivity through better transport of sugars and nutrients, promotion of cell division, and fatty acids biosynthesis and transport.",
+      "value_proposition": "Highest crop productivity, Highest return for farmers",
+      "directions_for_use": {
+        "wheat": {
+          "dose": "2 l/ha",
+          "period": "1 application at flag leaf growth stage"
+        },
+        "soybean": {
+          "dose": "1-2 l/ha",
+          "period": "2 applications: the 1st at Vn/Ri growth stage, the 2nd at R3/R5 growth stage"
+        },
+        "corn": {
+          "dose": "2 l/ha",
+          "period": "1 application at V4-V6 growth stage"
+        },
+        "rice": {
+          "dose": "1-2 l/ha",
+          "period": "2 applications: the 1st at the beginning of booting, the 2nd at heading growth stage"
+        },
+        "cotton": {
+          "dose": "2 l/ha",
+          "period": "2 applications: the 1st before squares appear and 2nd after 3-4 weeks"
+        },
+        "sunflower": {
+          "dose": "2 l/ha",
+          "period": "1 application at 4-6 leaf growth stage"
+        }
+      },
+      "scientific_evidence": {
+        "transcriptomics": {
+          "description": "Next Generation Sequencing (NGS) experiment on corn and soybean: plants treated with Yield Booster showed activation of genes involved in:",
+          "activities": [
+            "Transport of sugars and nutrients: Zn and Fe uptake and transport, ammoniun and nitrogen assimilation, phosphate homeostasis (uptake, sensing), phloem loading",
+            "Promotion of cell division: the coordination of specific hormonal processes, including the establishment of an optimal auxin/cytokinin balance",
+            "Fatty acids biosynthesis/transport: lipid transport, photosynthesis"
+          ]
+        },
+        "phenomics": {
+          "description": "Experiments on corn and soybean, where Yield Booster improved:",
+          "improvements": [
+            "Digital Biovolume and height",
+            "Plant compactness",
+            "Green Index"
+          ]
+        }
+      },
+      "field_trial_results": {
+        "crop_performance": {
+          "bean": {"yield_increase_percentage": 12},
+          "cotton": {"yield_increase_percentage": 11},
+          "sunflower": {"yield_increase_percentage": 10},
+          "rice": {"yield_increase_percentage": 9},
+          "soft_wheat": {"yield_increase_percentage": 6},
+          "corn": {"yield_increase_percentage": 5, "yield_increase": "+0,64 t/ha", "roi": "7:1"},
+          "soybean": {"yield_increase_percentage": 4, "yield_increase": "+0,27 t/ha", "roi": "5:1"},
+          "oilseed_rape": {"yield_increase_percentage": 4},
+          "barley": {"yield_increase_percentage": 2},
+          "wheat": {"yield_increase": "+0,30 t/ha", "roi": "5:1"},
+          "rice_detailed": {"yield_increase": "+0,66 t/ha", "roi": "14:1"}
+        },
+        "trials": {
+          "rice_trials": "2017-2022 Rice Trials showed 7.4% Average Yield Increase worldwide",
+          "corn_trials": "64 corn trials in 2022 with YieldB application resulted in positive yield response in 83% of trials with an average bu/A increase of 6.8 Bu/A"
+        }
+      }
+    },
+    {
+      "name": "Nutrient Use Efficiency (NUE) Product",
+      "category": "Biofertilizer",
+      "application_method": "Seed treatment and foliar application",
+      "composition": "Based on 3 strains of endophytic bacteria (Sphingobium salicis, Pseudomonas siliginis, Curtobacterium salicis)",
+      "description": "New innovative product concept with dual effect on N and P use efficiency and mineral nutrient uptakes",
+      "functionality": {
+        "nitrogen_sources": [
+          "Air – N2",
+          "Soil – NO, NO3, NH3/NH4",
+          "Soil – Organic, C-NP"
+        ],
+        "phosphate_management": [
+          "Enhanced P-solubilization",
+          "P and K uptake root to shoot transport",
+          "Organic acid"
+        ],
+        "nutrient_availability": [
+          "Siderophore production solubilization of micronutrients Fe, Mg, Cu, Zn, Mn, Mo"
+        ]
+      },
+      "application_rates": {
+        "foliar_application": {
+          "wheat": "10-50 g/ha",
+          "barley": "10-50 g/ha",
+          "corn": "10-50 g/ha",
+          "osr": "10-50 g/ha",
+          "rice": "10-50 g/ha"
+        },
+        "seed_treatment": {
+          "wheat": "10-50 g/T seeds",
+          "barley": "10-50 g/T seeds",
+          "corn": "50-150 g/T seeds",
+          "osr": "100-250 g/T seeds",
+          "sugarbeet": "500-1050 g/T seeds"
+        }
+      },
+      "scientific_evidence": {
+        "trials": "38 trials in corn (US, EU) 2023, 40-unit N reduction scenario - FOLIAR",
+        "results": {
+          "win_rate": "68% (positive response)",
+          "yield_increase_percentage": "2.6%",
+          "yield_increase_kg_ha": "250 kg/ha"
+        }
+      },
+      "key_benefits": [
+        "Product acts as a \"back up generator\" for plants when nutrients become limiting",
+        "Versatile and easy to apply: seed treatment or foliar application",
+        "Up to 2 years of shelf life",
+        "High compatibility with tank mixtures(F, I, H, F)",
+        "Trial data in key field crops"
+      ],
+      "notes": "Liquid formulation ≈ Solid formulation (1.2 L/ha = 30 g/ha). 10% difference in N regime is not assumed to generate differences within the system."
+    }
+  ]
+}

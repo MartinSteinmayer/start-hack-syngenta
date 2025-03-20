@@ -1,0 +1,156 @@
+{
+  "forecast": {
+    "daily": [
+      {
+        "date": "2025-03-19",
+        "temperature": {
+          "max": 28.4,
+          "min": 18.2,
+          "avg": 23.1
+        },
+        "precipitation": 0,
+        "humidity": 65.2,
+        "windSpeed": 3.4,
+        "globalRadiation": 6750
+      },
+      {
+        "date": "2025-03-20",
+        "temperature": {
+          "max": 29.1,
+          "min": 19.3,
+          "avg": 24.2
+        },
+        "precipitation": 0,
+        "humidity": 62.1,
+        "windSpeed": 2.8,
+        "globalRadiation": 7020
+      },
+      {
+        "date": "2025-03-21",
+        "temperature": {
+          "max": 27.5,
+          "min": 17.8,
+          "avg": 22.6
+        },
+        "precipitation": 5.3,
+        "humidity": 78.4,
+        "windSpeed": 4.6,
+        "globalRadiation": 4250
+      },
+      {
+        "date": "2025-03-22",
+        "temperature": {
+          "max": 24.8,
+          "min": 16.9,
+          "avg": 20.3
+        },
+        "precipitation": 12.7,
+        "humidity": 83.9,
+        "windSpeed": 5.2,
+        "globalRadiation": 3850
+      },
+      {
+        "date": "2025-03-23",
+        "temperature": {
+          "max": 26.2,
+          "min": 17.5,
+          "avg": 21.8
+        },
+        "precipitation": 2.1,
+        "humidity": 75.3,
+        "windSpeed": 3.9,
+        "globalRadiation": 5420
+      },
+      {
+        "date": "2025-03-24",
+        "temperature": {
+          "max": 28.7,
+          "min": 18.9,
+          "avg": 23.5
+        },
+        "precipitation": 0,
+        "humidity": 64.8,
+        "windSpeed": 3.1,
+        "globalRadiation": 6980
+      },
+      {
+        "date": "2025-03-25",
+        "temperature": {
+          "max": 30.2,
+          "min": 19.7,
+          "avg": 24.8
+        },
+        "precipitation": 0,
+        "humidity": 59.2,
+        "windSpeed": 2.5,
+        "globalRadiation": 7240
+      }
+    ],
+    "hourly": [
+      {
+        "datetime": "2025-03-19T00:00:00",
+        "temperature": 19.2,
+        "humidity": 72.5,
+        "windSpeed": 2.1,
+        "precipitation": 0,
+        "cloudCover": 15
+      },
+      {
+        "datetime": "2025-03-19T01:00:00",
+        "temperature": 18.7,
+        "humidity": 74.8,
+        "windSpeed": 1.8,
+        "precipitation": 0,
+        "cloudCover": 10
+      }
+    ]
+  },
+  "historical": {
+    "temperature": {
+      "avg": 24.5,
+      "max": 35.2,
+      "min": 15.1
+    },
+    "precipitation": {
+      "annual": 850,
+      "monthly": [45, 60, 75, 90, 120, 65, 45, 35, 70, 95, 85, 65]
+    }
+  },
+  "soil": {
+    "texture": "Clay Loam",
+    "properties": {
+      "bulkDensity": 1.35,
+      "organicMatter": 2.8,
+      "ph": 6.5,
+      "waterHoldingCapacity": 0.22,
+      "cationExchangeCapacity": 12.5
+    }
+  },
+  "stress_factors": {
+    "current": {
+      "drought": 0.2,
+      "heat": 0.1,
+      "nutrient_deficiency": 0.05
+    },
+    "forecast": [
+      {
+        "date": "2025-03-20",
+        "drought": 0.25,
+        "heat": 0.15,
+        "nutrient_deficiency": 0.05
+      },
+      {
+        "date": "2025-03-21",
+        "drought": 0.15,
+        "heat": 0.1,
+        "nutrient_deficiency": 0.05
+      },
+      {
+        "date": "2025-03-22",
+        "drought": 0.05,
+        "heat": 0.05,
+        "nutrient_deficiency": 0.05
+      }
+    ]
+  }
+}
