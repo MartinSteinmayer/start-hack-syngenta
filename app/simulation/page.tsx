@@ -3,7 +3,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { setupScene } from '@/lib/simulation/sceneSetup';
 import { createSkybox, createTerrain, createClouds, animateClouds } from '@/lib/environment';
-import { createCropFieldSimulation } from '@/lib/simulation';
+import {
+    createCropFieldSimulation,
+    preloadSimulationModels,
+    getModelLoadingProgress,
+    areModelsLoaded
+} from '@/lib/simulation';
 import { createCropTimeline, initializeTimelineController } from '@/lib/simulation/timeline';
 import { updatePlantsForGrowthStage } from '@/lib/simulation/plantGrowth';
 import SeasonTimelineControls from './components/SeasonTimelineControls';
@@ -33,6 +38,10 @@ export default function SimulationPage() {
     const [isLoading, setIsLoading] = useState(false);
     const [showSidebar, setShowSidebar] = useState(false);
 
+    // Model loading state
+    const [modelLoadingProgress, setModelLoadingProgress] = useState(0);
+    const [modelsLoaded, setModelsLoaded] = useState(false);
+
     // Timeline state
     const [timelineController, setTimelineController] = useState(null);
     const [dayInfo, setDayInfo] = useState(null);
@@ -40,6 +49,29 @@ export default function SimulationPage() {
 
     // Location state
     const [location, setLocation] = useState(null);
+
+    // Track model loading progress
+    useEffect(() => {
+        if (!modelsLoaded) {
+            const checkProgress = () => {
+                const progress = getModelLoadingProgress();
+                setModelLoadingProgress(progress);
+
+                const loaded = areModelsLoaded();
+                setModelsLoaded(loaded);
+
+                if (!loaded) {
+                    // Continue checking until loaded
+                    setTimeout(checkProgress, 500);
+                }
+            };
+
+            checkProgress();
+
+            // Start preloading models
+            preloadSimulationModels().catch(console.error);
+        }
+    }, [modelsLoaded]);
 
     // Initialize the scene
     useEffect(() => {
@@ -111,7 +143,7 @@ export default function SimulationPage() {
         // Load a default simulation immediately
         setTimeout(() => {
             const defaultSimParams = {
-                type: 'soybean',
+                type: 'cotton',
                 hectares: 1.5,  // Smaller field size for better density
                 density: 100,    // Higher density
                 polygon: [
@@ -272,6 +304,24 @@ export default function SimulationPage() {
                 <div className="w-full h-full">
                     <div ref={mountRef} className="w-full h-screen" />
                 </div>
+
+                {/* Model Loading Progress */}
+                {!modelsLoaded && modelLoadingProgress > 0 && (
+                    <div className="absolute top-4 left-1/2 transform -translate-x-1/2 p-4 bg-white bg-opacity-90 rounded-lg shadow-lg z-20">
+                        <div className="text-center">
+                            <h3 className="font-medium mb-2">Loading 3D Models</h3>
+                            <div className="w-64 h-2 bg-gray-200 rounded-full overflow-hidden">
+                                <div
+                                    className="h-full bg-green-500 transition-all duration-300"
+                                    style={{ width: `${modelLoadingProgress * 100}%` }}
+                                ></div>
+                            </div>
+                            <p className="mt-1 text-sm text-gray-600">
+                                {Math.round(modelLoadingProgress * 100)}% Complete
+                            </p>
+                        </div>
+                    </div>
+                )}
 
                 {/* Error message */}
                 {errorMessage && (
