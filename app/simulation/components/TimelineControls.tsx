@@ -109,7 +109,7 @@ const TimelineControls = ({ controller, totalDays, location }) => {
                             <div className="flex items-center">
                                 <span className="mr-1">{getGrowthStageIcon(dayInfo.growthStage)}</span>
                                 <span className="hidden sm:inline">{dayInfo.growthStage.toLowerCase()}</span>
-                                <span className="ml-1">({Math.round(dayInfo.growthPercent * 100)}%)</span>
+                                <span className="ml-1">({Math.round(dayInfo.growthFactor * 100)}%)</span>
                             </div>
                         </div>
                     </div>

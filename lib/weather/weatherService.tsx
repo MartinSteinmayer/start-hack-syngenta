@@ -136,6 +136,8 @@ export const WEATHER_TYPES = {
   export function calculateGrowthFactor(temperature: number, weatherType: string, humidity: number): number {
     // Optimal temperature range for most crops is around 15-25°C (59-77°F)
     const tempFactor = 1 - Math.abs(20 - temperature) / 20;
+    console.log('tempFactor')
+    console.log(tempFactor)
     
     // Plants like sunlight but need some water too
     const sunFactor = weatherType === WEATHER_TYPES.SUNNY ? 1.0 : 
@@ -144,10 +146,17 @@ export const WEATHER_TYPES = {
                     weatherType === WEATHER_TYPES.RAINY ? 0.4 : 0.3;
     
     // Optimal humidity range is around 60-70%
+    console.log('sunFactor')
+    console.log(sunFactor)
     const moistureFactor = Math.min(1.0, humidity / 70) * (humidity <= 85 ? 1 : 0.8);
+    console.log('moistureFactor')
+    console.log(moistureFactor)
     
     // Combine factors with different weights
-    return Math.max(0, Math.min(1, (tempFactor * 0.4 + sunFactor * 0.3 + moistureFactor * 0.3)));
+    const growthFactor = Math.max(0, Math.min(1, (tempFactor * 0.4 + sunFactor * 0.3 + moistureFactor * 0.3)))
+    console.log('growthFactor')
+    console.log(growthFactor)
+    return growthFactor;
   }
   
   // Generate random historical weather for a location based on climate patterns
@@ -287,6 +296,9 @@ export const WEATHER_TYPES = {
         day.weatherType,
         day.humidity
       );
+
+      console.log('growthFactor2')
+      console.log(growthFactor)
       
       return {
         date: new Date(day.date),

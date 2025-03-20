@@ -9,6 +9,8 @@ import {
 import { applyWeatherToScene, RainSystem } from '../weather';
 import { PLANT_HEIGHTS } from '../crops';
 
+
+
 // Growth stage modifiers (0-1) for different growth phases
 const GROWTH_STAGES = {
   SEEDLING: 0.2,      // Initial growth
@@ -135,9 +137,17 @@ const generateGenericWeatherData = (days, startDate = new Date()) => {
                     weather === WEATHER_TYPES.CLOUDY ? 0.6 : 
                     weather === WEATHER_TYPES.RAINY ? 0.4 : 0.3;
     const moistureFactor = Math.min(1.0, (baseHumidity + humidityVariance) / 70);
+    console.log('tempFactor')
+    console.log(tempFactor)
+    console.log('sunFactor')
+    console.log(sunFactor)
+    console.log('moistureFactor')
+    console.log(moistureFactor)
     
     // Calculate final growth factor
     const growthFactor = (tempFactor * 0.4 + sunFactor * 0.3 + moistureFactor * 0.3);
+    console.log('GrowthFactor')
+    console.log(growthFactor)
     
     // Get weather settings
     const settings = {
@@ -220,10 +230,10 @@ const generateGenericWeatherData = (days, startDate = new Date()) => {
 export const updatePlantsForGrowthStage = (timelineDay, plants, cropType) => {
   if (!plants || plants.length === 0) return;
   
-  const { growthPercent } = timelineDay;
+  const { growthFactor } = timelineDay;
   const baseHeight = PLANT_HEIGHTS[cropType] || 1.0;
   
-  console.log(`Updating ${plants.length} plants for growth stage: ${timelineDay.growthStage}, percent: ${growthPercent}`);
+  console.log(`Updating ${plants.length} plants for growth stage: ${timelineDay.growthStage}, percent: ${growthFactor}`);
   
   // Update each plant
   plants.forEach(plant => {
@@ -231,10 +241,10 @@ export const updatePlantsForGrowthStage = (timelineDay, plants, cropType) => {
     if (!plant.userData || !plant.userData.isPlant) return;
     
     // Adjust plant height based on growth
-    const targetHeight = baseHeight * growthPercent;
+    const targetHeight = baseHeight * growthFactor;
     
     // Ensure minimum scale to avoid invisible plants
-    const plantScale = Math.max(0.2, growthPercent);
+    const plantScale = Math.max(0.2, growthFactor);
     
     // Set the scale to match the growth percentage
     plant.scale.set(
@@ -249,12 +259,12 @@ export const updatePlantsForGrowthStage = (timelineDay, plants, cropType) => {
       if (plant.children && plant.children.length > 2) {
         // Primary cob - show in reproductive and mature stages
         if (plant.children[2]) {
-          plant.children[2].visible = growthPercent >= 0.6;
+          plant.children[2].visible = growthFactor >= 0.6;
         }
         
         // Secondary cob (if exists) - show only in mature stage
         if (plant.children[3]) {
-          plant.children[3].visible = growthPercent >= 0.85;
+          plant.children[3].visible = growthFactor >= 0.85;
         }
       }
     }
@@ -263,15 +273,15 @@ export const updatePlantsForGrowthStage = (timelineDay, plants, cropType) => {
 
 /**
  * Determine growth stage based on growth percentage
- * @param {number} growthPercent - Growth percentage (0-1)
+ * @param {number} growthFactor - Growth percentage (0-1)
  * @returns {string} Growth stage
  */
-export const determineGrowthStage = (growthPercent) => {
-  if (growthPercent < GROWTH_STAGES.SEEDLING) {
+export const determineGrowthStage = (growthFactor) => {
+  if (growthFactor < GROWTH_STAGES.SEEDLING) {
     return 'SEEDLING';
-  } else if (growthPercent < GROWTH_STAGES.VEGETATIVE) {
+  } else if (growthFactor < GROWTH_STAGES.VEGETATIVE) {
     return 'VEGETATIVE';
-  } else if (growthPercent < GROWTH_STAGES.REPRODUCTIVE) {
+  } else if (growthFactor < GROWTH_STAGES.REPRODUCTIVE) {
     return 'REPRODUCTIVE';
   } else {
     return 'MATURE';
@@ -301,9 +311,11 @@ export const initializeTimelineController = (timeline, scene, sceneObjects, setD
     
     const dayData = timeline.days[dayIndex];
     
+    console.log('dayData')
+    console.log(dayData)
     // Determine growth stage if not already set
     if (!dayData.growthStage) {
-      dayData.growthStage = determineGrowthStage(dayData.growthPercent);
+      dayData.growthStage = determineGrowthStage(dayData.growthFactor);
     }
     
     // Update plants
