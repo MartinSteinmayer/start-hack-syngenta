@@ -23,6 +23,7 @@ const FarmShapeStep: React.FC<FarmShapeStepProps> = ({
     const [polygonPoints, setPolygonPoints] = useState<Array<{ x: number; y: number }>>([]);
     const [isDrawing, setIsDrawing] = useState(false);
     const [farmPolygon, setFarmPolygon] = useState<Array<{ latitude: number; longitude: number }> | null>(null);
+    const [canvasDimensions, setCanvasDimensions] = useState({ width: 0, height: 0 });
 
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const imageRef = useRef<HTMLImageElement>(null);
@@ -35,87 +36,111 @@ const FarmShapeStep: React.FC<FarmShapeStepProps> = ({
 
     // Initialize canvas when image is loaded
     useEffect(() => {
-        if (satelliteImage && canvasRef.current && imageRef.current) {
-            const canvas = canvasRef.current;
-            const ctx = canvas.getContext('2d');
+        if (satelliteImage && imageRef.current) {
+            // We'll set up the canvas after the image is fully loaded
+            const img = imageRef.current;
 
-            if (ctx) {
-                // Set the canvas size to match the image exactly
-                // This is important for preventing scaling/zooming issues
-                canvas.width = imageRef.current.width;
-                canvas.height = imageRef.current.height;
+            const handleImageLoad = () => {
+                if (canvasRef.current && imageRef.current) {
+                    // Store the natural dimensions of the image
+                    const width = imageRef.current.naturalWidth;
+                    const height = imageRef.current.naturalHeight;
 
-                // Clear canvas
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    // Set canvas dimensions based on the natural image size
+                    setCanvasDimensions({ width, height });
 
-                // Draw the satellite image on the canvas
-                ctx.drawImage(imageRef.current, 0, 0);
+                    // Set the canvas size to match the image exactly
+                    // This is important for preventing scaling/zooming issues
+                    canvasRef.current.width = width;
+                    canvasRef.current.height = height;
+
+                    // Clear canvas
+                    const ctx = canvasRef.current.getContext('2d');
+                    if (ctx) {
+                        ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+                    }
+                }
+            };
+
+            // Check if image is already loaded
+            if (img.complete) {
+                handleImageLoad();
+            } else {
+                // Add load event listener
+                img.addEventListener('load', handleImageLoad);
+                // Cleanup
+                return () => {
+                    img.removeEventListener('load', handleImageLoad);
+                };
             }
         }
     }, [satelliteImage]);
 
-    // Draw the polygon points and lines
+    // Update canvas when dimensions change or when redrawing polygon
     useEffect(() => {
-        if (canvasRef.current && polygonPoints.length > 0 && imageRef.current) {
+        if (canvasRef.current && canvasDimensions.width > 0 && canvasDimensions.height > 0) {
             const canvas = canvasRef.current;
             const ctx = canvas.getContext('2d');
 
             if (ctx) {
-                // Make sure canvas dimensions are correct
-                canvas.width = imageRef.current.width;
-                canvas.height = imageRef.current.height;
+                // Set canvas internal dimensions to match image's natural size
+                canvas.width = canvasDimensions.width;
+                canvas.height = canvasDimensions.height;
 
-                // Redraw the image
-                ctx.drawImage(imageRef.current, 0, 0);
+                // Clear the canvas
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-                // Draw the polygon points
-                ctx.fillStyle = 'rgba(255, 0, 0, 0.5)';
-                ctx.strokeStyle = 'red';
-                ctx.lineWidth = 2;
-
-                // Draw lines between points
-                if (polygonPoints.length > 1) {
-                    ctx.beginPath();
-                    ctx.moveTo(polygonPoints[0].x, polygonPoints[0].y);
-
-                    for (let i = 1; i < polygonPoints.length; i++) {
-                        ctx.lineTo(polygonPoints[i].x, polygonPoints[i].y);
-                    }
-
-                    // Close the polygon if we have more than 2 points
-                    if (polygonPoints.length > 2) {
-                        ctx.lineTo(polygonPoints[0].x, polygonPoints[0].y);
-                    }
-
-                    ctx.stroke();
-
-                    // Fill the polygon with a semi-transparent color
-                    if (polygonPoints.length > 2) {
-                        ctx.fillStyle = 'rgba(255, 165, 0, 0.3)';
-                        ctx.fill();
-                    }
-                }
-
-                // Draw points
-                polygonPoints.forEach((point, index) => {
-                    ctx.beginPath();
-                    ctx.arc(point.x, point.y, 5, 0, Math.PI * 2);
+                // Draw the polygon points and lines
+                if (polygonPoints.length > 0) {
+                    // Draw the polygon points
                     ctx.fillStyle = 'rgba(255, 0, 0, 0.5)';
-                    ctx.fill();
+                    ctx.strokeStyle = 'red';
+                    ctx.lineWidth = 2;
 
-                    // Label the points
-                    ctx.fillStyle = 'white';
-                    ctx.strokeStyle = 'black';
-                    ctx.lineWidth = 1;
-                    ctx.font = '12px Arial';
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
-                    ctx.strokeText(String(index + 1), point.x, point.y);
-                    ctx.fillText(String(index + 1), point.x, point.y);
-                });
+                    // Draw lines between points
+                    if (polygonPoints.length > 1) {
+                        ctx.beginPath();
+                        ctx.moveTo(polygonPoints[0].x, polygonPoints[0].y);
+
+                        for (let i = 1; i < polygonPoints.length; i++) {
+                            ctx.lineTo(polygonPoints[i].x, polygonPoints[i].y);
+                        }
+
+                        // Close the polygon if we have more than 2 points
+                        if (polygonPoints.length > 2) {
+                            ctx.lineTo(polygonPoints[0].x, polygonPoints[0].y);
+                        }
+
+                        ctx.stroke();
+
+                        // Fill the polygon with a semi-transparent color
+                        if (polygonPoints.length > 2) {
+                            ctx.fillStyle = 'rgba(255, 165, 0, 0.3)';
+                            ctx.fill();
+                        }
+                    }
+
+                    // Draw points
+                    polygonPoints.forEach((point, index) => {
+                        ctx.beginPath();
+                        ctx.arc(point.x, point.y, 5, 0, Math.PI * 2);
+                        ctx.fillStyle = 'rgba(255, 0, 0, 0.5)';
+                        ctx.fill();
+
+                        // Label the points
+                        ctx.fillStyle = 'white';
+                        ctx.strokeStyle = 'black';
+                        ctx.lineWidth = 1;
+                        ctx.font = '12px Arial';
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        ctx.strokeText(String(index + 1), point.x, point.y);
+                        ctx.fillText(String(index + 1), point.x, point.y);
+                    });
+                }
             }
         }
-    }, [polygonPoints, satelliteImage]);
+    }, [polygonPoints, canvasDimensions]);
 
     // Fetch satellite image from API
     const fetchSatelliteImage = async () => {
@@ -261,8 +286,8 @@ const FarmShapeStep: React.FC<FarmShapeStepProps> = ({
         }
 
         // Convert canvas coordinates to geo coordinates
-        const imageWidth = imageRef.current.width;
-        const imageHeight = imageRef.current.height;
+        const imageWidth = canvasDimensions.width;
+        const imageHeight = canvasDimensions.height;
 
         // This is a simplified conversion - in a real app you'd use proper geo-transformation
         const geoPolygon = polygonPoints.map(point => {
@@ -397,50 +422,48 @@ const FarmShapeStep: React.FC<FarmShapeStepProps> = ({
                                 )}
                             </div>
 
-                            <div className="relative border rounded-lg overflow-hidden bg-gray-100" ref={imageContainerRef}>
-                                {/* Image */}
-                                <div className="relative" style={{ width: '100%' }}>
-                                    <img
-                                        ref={imageRef}
-                                        src={satelliteImage}
-                                        alt="Satellite view of farm location"
-                                        className="w-full h-auto max-w-full"
-                                        style={{ display: 'block' }}
-                                        onLoad={() => {
-                                            // Ensure canvas matches image dimensions exactly when image loads
-                                            if (canvasRef.current && imageRef.current) {
-                                                canvasRef.current.width = imageRef.current.width;
-                                                canvasRef.current.height = imageRef.current.height;
+                            <div className="relative w-[400px] mx-auto border rounded-lg overflow-hidden bg-gray-100" ref={imageContainerRef}>
+                                {/* Hidden Image (used only for loading the source) */}
+                                <img
+                                    ref={imageRef}
+                                    src={satelliteImage}
+                                    alt="Satellite view of farm location"
+                                    className="w-full h-auto"
+                                    style={{ display: 'none' }} // Hide the original image
+                                />
 
-                                                // Redraw if needed
-                                                if (polygonPoints.length > 0) {
-                                                    const ctx = canvasRef.current.getContext('2d');
-                                                    if (ctx) {
-                                                        ctx.drawImage(imageRef.current, 0, 0);
-                                                    }
-                                                }
-                                            }
-                                        }}
-                                    />
-                                    {/* Canvas overlay - position absolute and sized to match image exactly */}
+                                {/* Visible image container with fixed dimensions */}
+                                <div
+                                    className="relative"
+                                    style={{
+                                        width: '100%',
+                                        height: '100%',
+                                        backgroundImage: `url(${satelliteImage})`,
+                                        backgroundPosition: 'center',
+                                        backgroundSize: 'contain',
+                                        backgroundRepeat: 'no-repeat',
+                                        aspectRatio: canvasDimensions.width && canvasDimensions.height
+                                            ? `${canvasDimensions.width} / ${canvasDimensions.height}`
+                                            : 'auto'
+                                    }}
+                                >
+                                    {/* Canvas overlay - positioned absolutely within the container */}
                                     <canvas
                                         ref={canvasRef}
                                         onClick={handleCanvasClick}
-                                        className="absolute top-0 left-0 cursor-crosshair"
+                                        className="absolute top-0 left-0 w-full h-full cursor-crosshair"
                                         style={{
-                                            width: '100%',
-                                            height: '100%',
                                             pointerEvents: isDrawing ? 'auto' : 'none'
                                         }}
                                     ></canvas>
                                 </div>
 
-                                {isDrawing && (
-                                    <div className="absolute top-2 left-2 bg-white p-2 rounded shadow text-sm">
-                                        Click to add points. Add at least 3 points and click "Complete Polygon".
-                                    </div>
-                                )}
                             </div>
+                            {isDrawing && (
+                                <div className="bg-white mx-auto max-w-fit mt-2 text-center p-2 text-sm">
+                                    <p>Click to add points. Add at least 3 points and click "Complete Polygon".</p>
+                                </div>
+                            )}
                         </div>
                     )}
 
