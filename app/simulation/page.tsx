@@ -108,7 +108,7 @@ export default function Home() {
         // Load a default simulation immediately
         setTimeout(() => {
             const defaultSimParams = {
-                type: 'soybean',
+                type: 'corn',
                 hectares: 1.5,  // Smaller field size for better density
                 density: 100,    // Higher density
                 polygon: [
