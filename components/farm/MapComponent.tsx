@@ -4,71 +4,122 @@
 import React, { useEffect, useRef } from 'react';
 
 interface MapComponentProps {
-  latitude: number;
-  longitude: number;
-  hectares?: number;
-  className?: string;
-  showCircle?: boolean;
+    latitude: number;
+    longitude: number;
+    onLocationSelect: (lat: number, lng: number) => void;
+    disabled?: boolean;
 }
 
 const MapComponent: React.FC<MapComponentProps> = ({
-  latitude,
-  longitude,
-  hectares = 100,
-  className = "w-full h-64",
-  showCircle = true
+    latitude,
+    longitude,
+    onLocationSelect,
+    disabled = false
 }) => {
-  const iframeRef = useRef<HTMLIFrameElement>(null);
-  
-  useEffect(() => {
-    // Generate an approximation of radius in kilometers based on hectares
-    // 1 hectare = 0.01 square kilometers
-    // Area = π * r²
-    // Solve for r: r = sqrt(Area / π)
-    const areaKm2 = hectares * 0.01;
-    const radiusKm = Math.sqrt(areaKm2 / Math.PI);
-    
-    // Calculate zoom level based on radius
-    let zoomLevel = 14;
-    if (radiusKm > 0.5) zoomLevel = 13;
-    if (radiusKm > 1) zoomLevel = 12;
-    if (radiusKm > 2) zoomLevel = 11;
-    if (radiusKm > 5) zoomLevel = 10;
-    if (radiusKm > 10) zoomLevel = 9;
-    if (radiusKm > 20) zoomLevel = 8;
-    if (radiusKm > 50) zoomLevel = 7;
-    
-    // Create the OpenStreetMap embed URL
-    let url = `https://www.openstreetmap.org/export/embed.html?bbox=${longitude-0.1},${latitude-0.1},${longitude+0.1},${latitude+0.1}&layer=mapnik&marker=${latitude},${longitude}`;
-    
-    // Alternatively with zoom level
-    url = `https://www.openstreetmap.org/export/embed.html?bbox=${longitude-0.2},${latitude-0.2},${longitude+0.2},${latitude+0.2}&layer=mapnik&marker=${latitude},${longitude}&zoom=${zoomLevel}`;
-    
-    // Set the iframe source
-    if (iframeRef.current) {
-      iframeRef.current.src = url;
-    }
-  }, [latitude, longitude, hectares]);
+    const mapContainerRef = useRef<HTMLDivElement>(null);
+    const mapInstanceRef = useRef<any>(null);
+    const markerRef = useRef<any>(null);
+    const customIconRef = useRef<any>(null);
 
-  return (
-    <div className={`relative overflow-hidden rounded-md border border-gray-300 ${className}`}>
-      <iframe
-        ref={iframeRef}
-        width="100%"
-        height="100%"
-        frameBorder="0"
-        scrolling="no"
-        className="absolute inset-0 w-full h-full"
-        title="Farm location map"
-      ></iframe>
-      
-      {/* We can't easily add a circle overlay on the iframe, but we could add explanatory text */}
-      <div className="absolute bottom-0 left-0 right-0 bg-white bg-opacity-80 p-2 text-xs">
-        Farm location: {latitude.toFixed(6)}, {longitude.toFixed(6)}
-        {hectares && <span> • Approx. {hectares} hectares</span>}
-      </div>
-    </div>
-  );
+    useEffect(() => {
+        // Initialize the map only once
+        if (!mapInstanceRef.current && mapContainerRef.current) {
+            // Load Leaflet from CDN if it's not already loaded
+            if (!window.L) {
+                const link = document.createElement('link');
+                link.rel = 'stylesheet';
+                link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+                document.head.appendChild(link);
+
+                const script = document.createElement('script');
+                script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+                script.async = true;
+                script.onload = initializeMap;
+                document.head.appendChild(script);
+            } else {
+                initializeMap();
+            }
+        }
+
+        return () => {
+            // Clean up map when component unmounts
+            if (mapInstanceRef.current) {
+                mapInstanceRef.current.remove();
+                mapInstanceRef.current = null;
+            }
+        };
+    }, []);
+
+    // Update marker when coordinates change
+    useEffect(() => {
+        if (mapInstanceRef.current && markerRef.current) {
+            const newLatLng = window.L.latLng(latitude, longitude);
+            markerRef.current.setLatLng(newLatLng);
+            mapInstanceRef.current.setView(newLatLng, mapInstanceRef.current.getZoom());
+        }
+    }, [latitude, longitude]);
+
+    const initializeMap = () => {
+        if (!mapContainerRef.current || !window.L) return;
+
+        // Create map instance
+        mapInstanceRef.current = window.L.map(mapContainerRef.current).setView([latitude, longitude], 10);
+
+        // Add OpenStreetMap tile layer
+        window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(mapInstanceRef.current);
+
+        // Fix Leaflet's default icon path issues
+        window.L.Icon.Default.imagePath = '/';
+
+        // Create custom icon using marker from public directory
+        customIconRef.current = window.L.icon({
+            iconUrl: '/images/icons/marker-icon.png',
+            iconRetinaUrl: 'images/icons/marker-icon-2x.png',
+            shadowUrl: 'images/icons/marker-shadow.png',
+            iconSize: [25, 41],
+            iconAnchor: [12, 41],
+            popupAnchor: [1, -34],
+            shadowSize: [41, 41]
+        });
+
+        // Add a marker at the initial position with custom icon
+        markerRef.current = window.L.marker([latitude, longitude], {
+            draggable: !disabled,
+            icon: customIconRef.current
+        }).addTo(mapInstanceRef.current);
+
+        // Handle map click events
+        if (!disabled) {
+            mapInstanceRef.current.on('click', (e: any) => {
+                const { lat, lng } = e.latlng;
+                markerRef.current.setLatLng(e.latlng);
+                onLocationSelect(lat, lng);
+            });
+
+            // Handle marker drag events
+            markerRef.current.on('dragend', (e: any) => {
+                const position = e.target.getLatLng();
+                onLocationSelect(position.lat, position.lng);
+            });
+        }
+    };
+
+    return (
+        <div
+            ref={mapContainerRef}
+            style={{ width: '100%', height: '300px' }}
+            className={disabled ? 'cursor-default' : 'cursor-pointer'}
+        />
+    );
 };
+
+// Define Leaflet on the Window object for TypeScript
+declare global {
+    interface Window {
+        L: any;
+    }
+}
 
 export default MapComponent;
