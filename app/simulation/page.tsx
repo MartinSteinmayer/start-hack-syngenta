@@ -5,10 +5,11 @@ import { setupScene } from '@/lib/simulation/sceneSetup';
 import { createSkybox, createTerrain, createClouds, animateClouds } from '@/lib/environment';
 import { createCropFieldSimulation } from '@/lib/simulation';
 import { createCropTimeline, initializeTimelineController } from '@/lib/simulation/timeline';
-import TimelineControls from './components/TimelineControls';
+import { updatePlantsForGrowthStage } from '@/lib/simulation/plantGrowth';
+import SeasonTimelineControls from './components/SeasonTimelineControls';
 import * as THREE from 'three';
 
-export default function Home() {
+export default function SimulationPage() {
     // Reference to the 3D container
     const mountRef = useRef(null);
     const fileInputRef = useRef(null);
@@ -89,7 +90,8 @@ export default function Home() {
             animateClouds(cloudsRef.current);
 
             // Update rain if active
-            if (timelineController && timelineController.getCurrentDay &&
+            if (timelineController && 
+                timelineController.getCurrentDay &&
                 timelineController.getCurrentDay().settings &&
                 timelineController.getCurrentDay().settings.rainSystem) {
                 timelineController.getCurrentDay().settings.rainSystem.update();
@@ -108,7 +110,7 @@ export default function Home() {
         // Load a default simulation immediately
         setTimeout(() => {
             const defaultSimParams = {
-                type: 'corn',
+                type: 'soybean',
                 hectares: 1.5,  // Smaller field size for better density
                 density: 100,    // Higher density
                 polygon: [
@@ -151,70 +153,6 @@ export default function Home() {
             });
         };
     }, []);
-
-    // Handle file upload
-    const handleFileUpload = (event) => {
-        const file = event.target.files[0];
-        if (!file) return;
-
-        setIsLoading(true);
-        setErrorMessage('');
-
-        const reader = new FileReader();
-
-        reader.onload = (e) => {
-            try {
-                const content = e.target.result;
-                const parsedData = JSON.parse(content);
-
-                // Validate the parsed data
-                if (!parsedData.type) {
-                    throw new Error("Missing required field: 'type'");
-                }
-
-                if (!parsedData.hectares) {
-                    throw new Error("Missing required field: 'hectares'");
-                }
-
-                if (!parsedData.density) {
-                    throw new Error("Missing required field: 'density'");
-                }
-
-                if (!parsedData.polygon || !Array.isArray(parsedData.polygon) || parsedData.polygon.length < 3) {
-                    throw new Error("Invalid or missing 'polygon' field. Must be an array with at least 3 vertices.");
-                }
-
-                // Set location if provided
-                let simulationLocation = location;
-                if (parsedData.location) {
-                    simulationLocation = parsedData.location;
-                    setLocation(parsedData.location);
-                }
-
-                // Create the simulation with the parsed data
-                setCurrentSimulation({
-                    type: parsedData.type,
-                    hectares: parseFloat(parsedData.hectares),
-                    density: parseInt(parsedData.density),
-                    polygon: parsedData.polygon,
-                    location: simulationLocation,
-                    weatherSettings: parsedData.weatherSettings || { useRealWeather: true }
-                });
-
-            } catch (error) {
-                console.error("Error parsing file:", error);
-                setErrorMessage(`Error parsing file: ${error.message}`);
-                setIsLoading(false);
-            }
-        };
-
-        reader.onerror = () => {
-            setErrorMessage("Error reading file");
-            setIsLoading(false);
-        };
-
-        reader.readAsText(file);
-    };
 
     // Clear existing simulation and start a new one when parameters change
     useEffect(() => {
@@ -265,7 +203,7 @@ export default function Home() {
                         totalDays
                     );
 
-                    // Initialize timeline controller
+                    // Initialize timeline controller with our custom plant growth logic
                     const controller = initializeTimelineController(
                         timeline,
                         sceneRef.current,
@@ -273,7 +211,8 @@ export default function Home() {
                             directionalLight: lightRefs.current.directional,
                             ambientLight: lightRefs.current.ambient,
                             clouds: cloudsRef.current,
-                            plants: plants
+                            plants: plants,
+                            updatePlantsFunction: updatePlantsForGrowthStage // Use our improved function
                         },
                         setDayInfo
                     );
@@ -293,18 +232,11 @@ export default function Home() {
         }, 500);
     }, [currentSimulation]);
 
-    // Handle starting a new simulation
-    const handleStartSimulation = (simParams) => {
-        setCurrentSimulation(simParams);
-        setLocation(simParams.location);
-        setShowSidebar(false);
-    };
-
     return (
         <div className="flex flex-col">
             {/* Timeline Controls */}
             {timelineController && (
-                <TimelineControls
+                <SeasonTimelineControls
                     controller={timelineController}
                     totalDays={totalDays}
                     location={location}
@@ -315,7 +247,7 @@ export default function Home() {
             <div className="flex-1 relative">
                 {/* 3D View */}
                 <div className="w-full h-full">
-                    <div ref={mountRef} className="w-full h-full" />
+                    <div ref={mountRef} className="w-full h-screen" />
                 </div>
 
                 {/* Error message */}
@@ -340,7 +272,6 @@ export default function Home() {
                     </div>
                 )}
             </div>
-
         </div>
     );
 }

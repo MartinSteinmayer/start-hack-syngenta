@@ -243,8 +243,6 @@ export const updatePlantsForGrowthStage = (timelineDay, plants, cropType) => {
     // Adjust plant height based on growth
     const targetHeight = baseHeight * growthFactor;
 
-    console.log('targetHeight')
-    console.log(targetHeight)
     
     // Ensure minimum scale to avoid invisible plants
     const plantScale = Math.max(0.2, growthFactor);
