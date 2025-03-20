@@ -2915,7 +2915,7 @@ export default function FarmSetup() {
                     {/* Farm Size */}
                     <div>
                         <label htmlFor="acreage" className="block text-sm font-medium text-gray-700 mb-1">
-                            Total Farm Size (acres)
+                            Total Farm Size (hectar)
                         </label>
                         <input
                             type="number"
