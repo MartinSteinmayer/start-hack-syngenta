@@ -11,7 +11,8 @@ body {
 }
 
 button,
-a, select {
+a,
+select {
   cursor: pointer;
 }
 
@@ -41,7 +42,7 @@ a, select {
 }
 
 main {
-  background-image: src("images/farm-hero.jpg");
+  background-image: src("images/farm-hero.png");
 }
 
 @keyframes grow {
@@ -131,3 +132,4 @@ main {
 .notification {
   animation: float 2s ease-in-out;
 }
+

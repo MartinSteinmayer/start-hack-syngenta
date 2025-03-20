@@ -8,6 +8,7 @@ import { createCropTimeline, initializeTimelineController } from '@/lib/simulati
 import { updatePlantsForGrowthStage } from '@/lib/simulation/plantGrowth';
 import SeasonTimelineControls from './components/SeasonTimelineControls';
 import * as THREE from 'three';
+import Image from 'next/image';
 
 export default function SimulationPage() {
     // Reference to the 3D container
@@ -90,7 +91,7 @@ export default function SimulationPage() {
             animateClouds(cloudsRef.current);
 
             // Update rain if active
-            if (timelineController && 
+            if (timelineController &&
                 timelineController.getCurrentDay &&
                 timelineController.getCurrentDay().settings &&
                 timelineController.getCurrentDay().settings.rainSystem) {
@@ -234,6 +235,28 @@ export default function SimulationPage() {
 
     return (
         <div className="flex flex-col">
+
+            {/* Header Bar */}
+            <div className="bg-green-500 py-3 px-4">
+                <div className="container mx-auto max-w-5xl flex justify-between items-center">
+                    <div className="flex items-center">
+                        <span className="text-white font-bold text-xl">Farm Bio-Boost</span>
+                        <span className="text-white ml-2">Simulator</span>
+                    </div>
+                    {/* Powered by Syngenta */}
+                    <div className="flex items-center text-sm text-gray-600">
+                        <span className="mr-2">Powered by</span>
+                        <Image
+                            src="/images/syngenta-logo.png"
+                            alt="Syngenta"
+                            width={100}
+                            height={30}
+                            className="w-auto"
+                        />
+                    </div>
+                </div>
+            </div>
+
             {/* Timeline Controls */}
             {timelineController && (
                 <SeasonTimelineControls

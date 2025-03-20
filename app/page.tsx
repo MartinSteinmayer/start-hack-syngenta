@@ -14,8 +14,8 @@ export default function HomePage() {
         setShowWizard(true);
         // Smooth scroll to the wizard section
         setTimeout(() => {
-            document.getElementById('setup-wizard')?.scrollIntoView({ 
-                behavior: 'smooth' 
+            document.getElementById('setup-wizard')?.scrollIntoView({
+                behavior: 'smooth'
             });
         }, 100);
     };
@@ -25,7 +25,7 @@ export default function HomePage() {
             {/* Persistent Background Container */}
             <div className="fixed inset-0 z-0">
                 <Image
-                    src="/images/farm-hero.jpg"
+                    src="/images/farm-hero.png"
                     alt="Sustainable farming landscape"
                     fill
                     priority
@@ -42,17 +42,17 @@ export default function HomePage() {
                         <span className="text-white font-bold text-xl">Farm Bio-Boost</span>
                         <span className="text-white ml-2">Simulator</span>
                     </div>
-                {/* Powered by Syngenta */}
-                <div className="flex items-center text-sm text-gray-600">
-                    <span className="mr-2">Powered by</span>
-                    <Image
-                        src="/images/syngenta-logo.png"
-                        alt="Syngenta"
-                        width={100}
-                        height={30}
-                        className="w-auto"
-                    />
-                </div>
+                    {/* Powered by Syngenta */}
+                    <div className="flex items-center text-sm text-gray-600">
+                        <span className="mr-2">Powered by</span>
+                        <Image
+                            src="/images/syngenta-logo.png"
+                            alt="Syngenta"
+                            width={100}
+                            height={30}
+                            className="w-auto"
+                        />
+                    </div>
                 </div>
             </div>
 
@@ -70,9 +70,9 @@ export default function HomePage() {
                     {showWizard && (
                         <div id="setup-wizard" className="pt-4 pb-12">
                             <FarmSetupWizard />
-                            
+
                             <div className="text-center mt-8">
-                                <button 
+                                <button
                                     onClick={() => setShowWizard(false)}
                                     className="text-white hover:text-gray-200 text-sm underline"
                                 >
