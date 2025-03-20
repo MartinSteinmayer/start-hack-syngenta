@@ -42,17 +42,17 @@ export default function HomePage() {
                         <span className="text-white font-bold text-xl">Farm Bio-Boost</span>
                         <span className="text-white ml-2">Simulator</span>
                     </div>
-                    {/* Powered by Syngenta */}
-                    <div className="flex items-center text-sm text-gray-600">
-                        <span className="mr-2">Powered by</span>
-                        <Image
-                            src="/images/syngenta-logo.png"
-                            alt="Syngenta"
-                            width={100}
-                            height={30}
-                            className="w-auto"
-                        />
-                    </div>
+                {/* Powered by Syngenta */}
+                <div className="flex items-center text-sm text-gray-600">
+                    <span className="mr-2">Powered by</span>
+                    <Image
+                        src="/images/syngenta-logo.png"
+                        alt="Syngenta"
+                        width={100}
+                        height={30}
+                        className="w-auto"
+                    />
+                </div>
                 </div>
             </div>
 

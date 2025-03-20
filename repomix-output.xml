@@ -49,6 +49,15 @@ app/
       route.ts
     products/
       route.ts
+  simulation/
+    components/
+      CropInfoPanel.tsx
+      FarmGameView.tsx
+      ProductSelector.tsx
+      ResultsPanel.tsx
+      SimulationControls.tsx
+      ThreeFarmScene.tsx
+    page.tsx
   globals.css
   layout.tsx
   page.tsx
@@ -58,11 +67,16 @@ components/
     CropStressAnalysis.tsx
     EnvironmentalDataDisplay.tsx
     FarmSetup.tsx
+    FarmSetupWizard.tsx
     LocationPicker.tsx
     MapComponent.tsx
+  styles/
+    Navbar.css
   ui/
     Button.tsx
     Card.tsx
+    HeroSection.tsx
+    Navbar.tsx
 lib/
   data/
     products.json
@@ -82,6 +96,7 @@ public/
 types/
   farm.ts
   products.ts
+  simulation.ts
 .gitignore
 next.config.ts
 package.json
@@ -93,18 +108,1704 @@ tsconfig.json
 <files>
 This section contains the contents of the repository's files.
 
-<file path="app/api/environmental-data/route.ts">
-import { NextRequest, NextResponse } from 'next/server';
+<file path="app/simulation/components/CropInfoPanel.tsx">
+import React from 'react';
+import { Crop } from '@/types/farm';
 
-// Define interfaces for API responses
-interface CEHubResponse {
-    success: boolean;
-    data: any;
-    error?: string;
+interface CropInfoPanelProps {
+    crop: Crop | null;
+    environmentalData: any;
+    currentDay: number;
+    onApplyProduct: (cropId: string, productId: string) => void;
+    onClose: () => void;
 }
 
-interface WeatherData {
-    forecast: {
+const CropInfoPanel: React.FC<CropInfoPanelProps> = ({
+    crop,
+    environmentalData,
+    currentDay,
+    onApplyProduct,
+    onClose
+}) => {
+    if (!crop) return null;
+
+    // Get crop emoji based on type
+    const getCropEmoji = (cropType: string) => {
+        const cropEmojis: Record<string, string> = {
+            rice: '🌾',
+            wheat: '🌾',
+            corn: '🌽',
+            soybean: '🌱',
+            cotton: '🧶',
+            vegetable: '🥦',
+            fruit: '🍎'
+        };
+
+        return cropEmojis[cropType] || '🌱';
+    };
+
+    // Calculate growth stage based on current day (0-100)
+    const getGrowthStage = (day: number) => {
+        const dayPercentage = Math.min(100, (day / 100) * 100);
+
+        if (dayPercentage < 20) return 'Seedling';
+        if (dayPercentage < 60) return 'Growing';
+        if (dayPercentage < 90) return 'Mature';
+        return 'Ready for Harvest';
+    };
+
+    // Generate health metrics (simplified)
+    const getHealthMetrics = () => {
+        // In a real application, these would be calculated based on the simulation
+        return {
+            water: Math.random() * 100,
+            nutrient: Math.random() * 100,
+            pest: Math.random() * 100
+        };
+    };
+
+    // Generate recommendations based on health metrics
+    const getRecommendations = () => {
+        // This would be more sophisticated in a real application
+        const metrics = getHealthMetrics();
+
+        const recommendations = [];
+
+        if (metrics.water < 50) {
+            recommendations.push({
+                type: 'water',
+                product: 'stress-buster',
+                icon: '💧',
+                label: 'Water Stress Relief',
+                color: 'bg-blue-100 border-blue-300'
+            });
+        }
+
+        if (metrics.nutrient < 60) {
+            recommendations.push({
+                type: 'nutrient',
+                product: 'nue-product',
+                icon: '🌿',
+                label: 'Nutrient Booster',
+                color: 'bg-green-100 border-green-300'
+            });
+        }
+
+        if (metrics.pest < 70) {
+            recommendations.push({
+                type: 'pest',
+                product: 'biocontrol',
+                icon: '🛡️',
+                label: 'Pest Protection',
+                color: 'bg-yellow-100 border-yellow-300'
+            });
+        }
+
+        if (recommendations.length === 0) {
+            recommendations.push({
+                type: 'good',
+                icon: '👍',
+                label: 'No Action Needed',
+                color: 'bg-gray-100 border-gray-300'
+            });
+        }
+
+        return recommendations;
+    };
+
+    const healthMetrics = getHealthMetrics();
+    const growthStage = getGrowthStage(currentDay);
+    const recommendations = getRecommendations();
+
+    // Calculate estimated yield
+    const estimatedYield = (3 + Math.random() * 2).toFixed(1);
+    const totalYield = (crop.acreage * parseFloat(estimatedYield)).toFixed(1);
+
+    // Get health indicator color
+    const getHealthColor = (value: number) => {
+        if (value >= 75) return 'bg-green-500';
+        if (value >= 50) return 'bg-yellow-500';
+        return 'bg-red-500';
+    };
+
+    return (
+        <div className="absolute top-0 left-0 w-full h-full flex items-center justify-center z-10 pointer-events-none">
+            <div className="max-w-sm w-full bg-white bg-opacity-95 backdrop-blur-md rounded-xl shadow-xl p-4 m-4 pointer-events-auto">
+                <div className="flex justify-between items-center mb-4">
+                    <div className="flex items-center gap-3">
+                        <div className="text-4xl">{getCropEmoji(crop.type)}</div>
+                        <div>
+                            <h3 className="text-xl font-bold">{crop.name}</h3>
+                            <p className="text-sm text-gray-600 capitalize">{crop.type} ({crop.acreage} acres)</p>
+                        </div>
+                    </div>
+                    <button
+                        onClick={onClose}
+                        className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-200 hover:bg-gray-300"
+                        aria-label="Close details"
+                    >
+                        ✕
+                    </button>
+                </div>
+
+                {/* Growth Stage Visualization */}
+                <div className="bg-gray-100 rounded-lg p-3 mb-4">
+                    <div className="flex justify-between items-center mb-2">
+                        <div className="text-sm font-medium">Growth Stage</div>
+                        <div className="text-sm font-bold">{growthStage}</div>
+                    </div>
+
+                    <div className="relative h-8 mb-1">
+                        <div className="absolute inset-0 flex">
+                            <div className="flex-1 flex items-center justify-center text-xs text-gray-500 border-r border-gray-300">Planting</div>
+                            <div className="flex-1 flex items-center justify-center text-xs text-gray-500 border-r border-gray-300">Growing</div>
+                            <div className="flex-1 flex items-center justify-center text-xs text-gray-500 border-r border-gray-300">Mature</div>
+                            <div className="flex-1 flex items-center justify-center text-xs text-gray-500">Harvest</div>
+                        </div>
+                    </div>
+
+                    <div className="w-full bg-gray-200 rounded-full h-2 mb-1">
+                        <div
+                            className="bg-green-500 h-2 rounded-full"
+                            style={{ width: `${Math.min(100, (currentDay / 100) * 100)}%` }}
+                        ></div>
+                    </div>
+
+                    <div className="text-center text-xs text-gray-500">Day {currentDay}</div>
+                </div>
+
+                {/* Health Visualizations */}
+                <div className="grid grid-cols-3 gap-2 mb-4">
+                    <div className="bg-gray-100 rounded-lg p-2 text-center">
+                        <div className="text-lg">💧</div>
+                        <div className="w-full bg-gray-200 rounded-full h-1.5 my-1">
+                            <div
+                                className={`${getHealthColor(healthMetrics.water)} h-1.5 rounded-full`}
+                                style={{ width: `${healthMetrics.water}%` }}
+                            ></div>
+                        </div>
+                        <div className="text-xs">Water</div>
+                    </div>
+
+                    <div className="bg-gray-100 rounded-lg p-2 text-center">
+                        <div className="text-lg">🌿</div>
+                        <div className="w-full bg-gray-200 rounded-full h-1.5 my-1">
+                            <div
+                                className={`${getHealthColor(healthMetrics.nutrient)} h-1.5 rounded-full`}
+                                style={{ width: `${healthMetrics.nutrient}%` }}
+                            ></div>
+                        </div>
+                        <div className="text-xs">Nutrients</div>
+                    </div>
+
+                    <div className="bg-gray-100 rounded-lg p-2 text-center">
+                        <div className="text-lg">🛡️</div>
+                        <div className="w-full bg-gray-200 rounded-full h-1.5 my-1">
+                            <div
+                                className={`${getHealthColor(healthMetrics.pest)} h-1.5 rounded-full`}
+                                style={{ width: `${healthMetrics.pest}%` }}
+                            ></div>
+                        </div>
+                        <div className="text-xs">Protection</div>
+                    </div>
+                </div>
+
+                {/* Yield Prediction */}
+                <div className="bg-green-50 rounded-lg p-3 mb-4 flex justify-between items-center">
+                    <div>
+                        <div className="text-sm font-medium">Expected Yield</div>
+                        <div className="text-xs text-gray-600">Per acre</div>
+                    </div>
+                    <div className="text-right">
+                        <div className="text-xl font-bold text-green-700">{estimatedYield} tons</div>
+                        <div className="text-xs text-gray-600">Total: {totalYield} tons</div>
+                    </div>
+                </div>
+
+                {/* Recommended Actions */}
+                <div className="mb-2">
+                    <div className="text-sm font-medium mb-2">Recommended Actions</div>
+                    <div className="space-y-2">
+                        {recommendations.map((rec, index) => (
+                            <div
+                                key={`rec-${index}`}
+                                className={`rounded-lg p-3 border flex items-center gap-3 ${rec.color}`}
+                            >
+                                <div className="text-2xl">{rec.icon}</div>
+                                <div className="flex-grow">
+                                    <div className="font-medium text-sm">{rec.label}</div>
+                                </div>
+                                {rec.product && (
+                                    <button
+                                        onClick={() => onApplyProduct(crop.id, rec.product)}
+                                        className="bg-white px-3 py-1 rounded-full text-sm font-medium shadow-sm hover:bg-gray-100"
+                                    >
+                                        Apply
+                                    </button>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+export default CropInfoPanel;
+</file>
+
+<file path="app/simulation/components/FarmGameView.tsx">
+import React, { useState, useEffect } from 'react';
+import { Crop, FarmData, GeoLocation } from '@/types/farm';
+
+interface FarmGameViewProps {
+  farmData: FarmData;
+  currentDay: number;
+  weatherData: any;
+  onCropSelect: (cropId: string) => void;
+}
+
+const FarmGameView: React.FC<FarmGameViewProps> = ({ 
+  farmData, 
+  currentDay, 
+  weatherData,
+  onCropSelect 
+}) => {
+  const [gridSize, setGridSize] = useState({ width: 12, height: 10 });
+  const [hoveredCrop, setHoveredCrop] = useState<string | null>(null);
+  
+  // Calculate grid cell size based on container size
+  useEffect(() => {
+    const calculateGridSize = () => {
+      // Adjust grid size based on number of crops
+      const cropCount = farmData.crops.length;
+      if (cropCount <= 2) {
+        setGridSize({ width: 8, height: 6 });
+      } else if (cropCount <= 4) {
+        setGridSize({ width: 10, height: 8 });
+      } else {
+        setGridSize({ width: 12, height: 10 });
+      }
+    };
+    
+    calculateGridSize();
+  }, [farmData.crops]);
+
+  // Position crops on the grid
+  const positionCrops = () => {
+    const positions: Record<string, { x: number, y: number, width: number, height: number }> = {};
+    
+    // Simple algorithm to position crops based on their acreage
+    let x = 0;
+    let y = 0;
+    let rowHeight = 0;
+    
+    farmData.crops.forEach(crop => {
+      // Scale crop size based on acreage
+      const relativeSize = Math.max(1, Math.round((crop.acreage / farmData.totalAcreage) * 15));
+      const width = relativeSize;
+      const height = relativeSize;
+      
+      // Check if we need to move to a new row
+      if (x + width > gridSize.width) {
+        x = 0;
+        y += rowHeight;
+        rowHeight = 0;
+      }
+      
+      positions[crop.id] = { x, y, width, height };
+      
+      // Update coordinates for next crop
+      x += width;
+      rowHeight = Math.max(rowHeight, height);
+    });
+    
+    return positions;
+  };
+  
+  // Calculate crop positions
+  const cropPositions = positionCrops();
+  
+  // Determine growth stage based on current day (0-100)
+  const getGrowthStage = (cropType: string, day: number) => {
+    // Simplified growth stages: seedling, growing, mature, harvesting
+    const dayPercentage = Math.min(100, (day / 100) * 100);
+    
+    if (dayPercentage < 20) return 'seedling';
+    if (dayPercentage < 60) return 'growing';
+    if (dayPercentage < 90) return 'mature';
+    return 'harvesting';
+  };
+  
+  // Get crop emoji based on type and growth stage
+  const getCropEmoji = (crop: Crop) => {
+    const stage = getGrowthStage(crop.type, currentDay);
+    
+    const cropEmojis: Record<string, Record<string, string>> = {
+      rice: {
+        seedling: '🌱',
+        growing: '🌿',
+        mature: '🌾',
+        harvesting: '🌾'
+      },
+      wheat: {
+        seedling: '🌱',
+        growing: '🌿',
+        mature: '🌾',
+        harvesting: '🌾'
+      },
+      corn: {
+        seedling: '🌱',
+        growing: '🌿',
+        mature: '🌽',
+        harvesting: '🌽'
+      },
+      soybean: {
+        seedling: '🌱',
+        growing: '🌿',
+        mature: '🌱',
+        harvesting: '🌱'
+      },
+      cotton: {
+        seedling: '🌱',
+        growing: '🌿',
+        mature: '🌸',
+        harvesting: '🧶'
+      },
+      vegetable: {
+        seedling: '🌱',
+        growing: '🌿',
+        mature: '🥦',
+        harvesting: '🥦'
+      },
+      fruit: {
+        seedling: '🌱',
+        growing: '🌿',
+        mature: '🌳',
+        harvesting: '🍎'
+      }
+    };
+    
+    return cropEmojis[crop.type]?.[stage] || '🌱';
+  };
+  
+  // Calculate crop size scaling based on growth stage
+  const getCropSize = (crop: Crop) => {
+    const stage = getGrowthStage(crop.type, currentDay);
+    
+    const scaleFactors = {
+      seedling: 0.6,
+      growing: 0.8,
+      mature: 1,
+      harvesting: 1
+    };
+    
+    return scaleFactors[stage as keyof typeof scaleFactors] || 1;
+  };
+  
+  // Get weather effect elements
+  const getWeatherEffects = () => {
+    if (!weatherData || !weatherData.forecast) return null;
+    
+    const currentWeather = weatherData.forecast.daily[Math.min(
+      weatherData.forecast.daily.length - 1, 
+      Math.floor(currentDay / 7)
+    )];
+    
+    const raindrops = [];
+    
+    if (currentWeather.precipitation > 3) {
+      const dropCount = Math.min(50, Math.round(currentWeather.precipitation * 3));
+      
+      for (let i = 0; i < dropCount; i++) {
+        const x = Math.random() * 100;
+        const y = Math.random() * 100;
+        const delay = Math.random() * 5;
+        
+        raindrops.push(
+          <div 
+            key={`drop-${i}`} 
+            className="absolute bg-blue-400 rounded-full opacity-70"
+            style={{
+              width: '2px',
+              height: '8px',
+              left: `${x}%`,
+              top: `${y}%`,
+              animation: `fall 1.5s infinite ${delay}s`,
+            }}
+          />
+        );
+      }
+    }
+    
+    return (
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        {raindrops}
+      </div>
+    );
+  };
+  
+  // Determine crop health based on environmental factors
+  const getCropHealthStatus = (crop: Crop) => {
+    // This would ideally be calculated from the simulation logic
+    // For now, we'll return a simple random state
+    const states = ['healthy', 'stressed', 'unhealthy'];
+    return states[Math.floor(Math.random() * 3)];
+  };
+  
+  // Get crop health color
+  const getHealthColor = (status: string) => {
+    switch (status) {
+      case 'healthy': return 'bg-green-100 border-green-500';
+      case 'stressed': return 'bg-yellow-100 border-yellow-500';
+      case 'unhealthy': return 'bg-red-100 border-red-500';
+      default: return 'bg-green-100 border-green-500';
+    }
+  };
+
+  return (
+    <div className="relative w-full h-96 bg-green-200 rounded-lg overflow-hidden border-2 border-green-600">
+      {/* Sky */}
+      <div className="absolute inset-0 bg-gradient-to-b from-blue-300 to-blue-100"></div>
+      
+      {/* Weather effects */}
+      {getWeatherEffects()}
+      
+      {/* Ground */}
+      <div className="absolute inset-x-0 bottom-0 h-3/4 bg-green-300 border-t-2 border-green-400">
+        {/* Soil texture */}
+        <div className="absolute inset-0 opacity-20">
+          {Array(20).fill(0).map((_, i) => (
+            <div 
+              key={`soil-${i}`} 
+              className="absolute bg-green-800 rounded-full"
+              style={{
+                width: `${Math.random() * 5 + 2}px`,
+                height: `${Math.random() * 5 + 2}px`,
+                left: `${Math.random() * 100}%`,
+                top: `${Math.random() * 100}%`,
+              }}
+            />
+          ))}
+        </div>
+      </div>
+      
+      {/* Farm grid */}
+      <div className="absolute inset-0 flex items-center justify-center">
+        <div 
+          className="relative"
+          style={{ 
+            width: `${gridSize.width * 40}px`, 
+            height: `${gridSize.height * 40}px` 
+          }}
+        >
+          {/* Render crops */}
+          {farmData.crops.map(crop => {
+            const position = cropPositions[crop.id];
+            const healthStatus = getCropHealthStatus(crop);
+            
+            if (!position) return null;
+            
+            return (
+              <div
+                key={crop.id}
+                className={`absolute border-2 rounded-md cursor-pointer transition-all transform ${getHealthColor(healthStatus)}`}
+                style={{
+                  left: `${position.x * 40}px`,
+                  top: `${position.y * 40}px`,
+                  width: `${position.width * 40}px`,
+                  height: `${position.height * 40}px`,
+                  zIndex: hoveredCrop === crop.id ? 10 : 1,
+                  transform: hoveredCrop === crop.id ? 'scale(1.05)' : 'scale(1)',
+                }}
+                onClick={() => onCropSelect(crop.id)}
+                onMouseEnter={() => setHoveredCrop(crop.id)}
+                onMouseLeave={() => setHoveredCrop(null)}
+              >
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <div className="text-3xl" style={{ fontSize: `${2 * getCropSize(crop)}rem` }}>
+                    {getCropEmoji(crop)}
+                  </div>
+                  <div className="text-xs font-bold mt-1 bg-white bg-opacity-75 px-1 rounded">
+                    {crop.name}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+      
+      {/* Info box for hovered crop */}
+      {hoveredCrop && (
+        <div className="absolute bottom-2 right-2 bg-white p-2 rounded shadow-md max-w-xs">
+          <div className="font-bold">
+            {farmData.crops.find(c => c.id === hoveredCrop)?.name}
+          </div>
+          <div className="text-sm">
+            Click to view details and recommendations
+          </div>
+        </div>
+      )}
+      
+      {/* Farm name overlay */}
+      <div className="absolute top-2 left-2 bg-white bg-opacity-75 p-2 rounded shadow">
+        <div className="font-bold">{farmData.name}</div>
+        <div className="text-xs text-gray-600">Day {currentDay}</div>
+      </div>
+    </div>
+  );
+};
+
+export default FarmGameView;
+</file>
+
+<file path="app/simulation/components/ProductSelector.tsx">
+import React, { useState } from 'react';
+import { Crop } from '@/types/farm';
+
+interface Product {
+    id: string;
+    name: string;
+    type: string;
+    description: string;
+    icon: string;
+    color: string;
+}
+
+interface ProductSelectorProps {
+    crop: Crop;
+    onApply: (productId: string) => void;
+    onCancel: () => void;
+}
+
+const ProductSelector: React.FC<ProductSelectorProps> = ({
+    crop,
+    onApply,
+    onCancel
+}) => {
+    const [selectedProduct, setSelectedProduct] = useState<string | null>(null);
+
+    // Mock products
+    const products: Product[] = [
+        {
+            id: 'stress-buster',
+            name: 'Stress Buster',
+            type: 'Biostimulant',
+            description: 'Helps plants overcome environmental stress',
+            icon: '💧',
+            color: 'bg-blue-100 border-blue-300'
+        },
+        {
+            id: 'yield-booster',
+            name: 'Yield Booster',
+            type: 'Biostimulant',
+            description: 'Increases plant productivity and yield',
+            icon: '🌱',
+            color: 'bg-green-100 border-green-300'
+        },
+        {
+            id: 'nue-product',
+            name: 'NUE Product',
+            type: 'Biofertilizer',
+            description: 'Improves nutrient uptake efficiency',
+            icon: '🌿',
+            color: 'bg-green-100 border-green-300'
+        }
+    ];
+
+    return (
+        <div className="absolute top-0 left-0 w-full h-full flex items-center justify-center z-10 pointer-events-none">
+            <div className="max-w-sm w-full bg-white bg-opacity-95 backdrop-blur-md rounded-xl shadow-xl p-4 m-4 pointer-events-auto">
+                <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-xl font-bold">Apply Product to {crop.name}</h3>
+                    <button
+                        onClick={onCancel}
+                        className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-200 hover:bg-gray-300"
+                        aria-label="Close selector"
+                    >
+                        ✕
+                    </button>
+                </div>
+
+                <div className="space-y-3 mb-4">
+                    {products.map(product => (
+                        <div
+                            key={product.id}
+                            className={`p-3 rounded-lg border cursor-pointer transition-all ${selectedProduct === product.id
+                                    ? `${product.color} ring-2 ring-green-500`
+                                    : `${product.color} hover:ring-1 hover:ring-gray-300`
+                                }`}
+                            onClick={() => setSelectedProduct(product.id)}
+                        >
+                            <div className="flex items-center gap-3">
+                                <div className="text-3xl">{product.icon}</div>
+                                <div className="flex-grow">
+                                    <div className="font-medium">{product.name}</div>
+                                    <div className="text-xs text-gray-600">{product.type}</div>
+                                    <div className="text-sm mt-1">{product.description}</div>
+                                </div>
+                                {selectedProduct === product.id && (
+                                    <div className="text-green-500 text-xl">✓</div>
+                                )}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+
+                <div className="flex justify-end gap-2">
+                    <button
+                        onClick={onCancel}
+                        className="px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300 font-medium"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        onClick={() => selectedProduct && onApply(selectedProduct)}
+                        disabled={!selectedProduct}
+                        className={`px-4 py-2 rounded-lg font-medium ${selectedProduct
+                                ? 'bg-green-500 text-white hover:bg-green-600'
+                                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                            }`}
+                    >
+                        Apply Product
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+export default ProductSelector;
+</file>
+
+<file path="app/simulation/components/ResultsPanel.tsx">
+// app/simulation/components/ResultsPanel.tsx
+
+import React from 'react';
+import { Card } from '@/components/ui/Card';
+import { Crop } from '@/types/farm';
+import { CropYieldEstimate } from '@/types/simulation';
+
+interface ResultsPanelProps {
+    crops: Crop[];
+    yieldEstimates: Record<string, any>;
+    selectedProducts: Record<string, string[]>;
+    onCropSelect: (cropId: string) => void;
+    currentDay: number;
+}
+
+const ResultsPanel: React.FC<ResultsPanelProps> = ({
+    crops,
+    yieldEstimates,
+    selectedProducts,
+    onCropSelect,
+    currentDay
+}) => {
+    // Calculate total yield across all crops
+    const totalYield = Object.values(yieldEstimates).reduce((sum, est) => {
+        return sum + (est.totalEstimatedYield || 0);
+    }, 0);
+
+    // Calculate total yield improvement from products
+    const totalImprovement = Object.values(yieldEstimates).reduce((sum, est: any) => {
+        return sum + ((est.productEffect || 0) * est.totalEstimatedYield || 0);
+    }, 0);
+
+    // Determine overall farm health
+    const determineOverallHealth = () => {
+        let totalStress = 0;
+        let cropCount = 0;
+
+        crops.forEach(crop => {
+            const estimate = yieldEstimates[crop.id];
+            if (estimate?.stressFactors) {
+                totalStress += (
+                    estimate.stressFactors.temperature +
+                    estimate.stressFactors.water +
+                    estimate.stressFactors.soil
+                ) / 3;
+                cropCount++;
+            }
+        });
+
+        const avgStress = cropCount > 0 ? totalStress / cropCount : 0;
+
+        if (avgStress > 0.6) return { status: 'Needs Attention', color: 'text-red-600', icon: '⚠️' };
+        if (avgStress > 0.3) return { status: 'Fair', color: 'text-yellow-600', icon: '⚖️' };
+        return { status: 'Healthy', color: 'text-green-600', icon: '✅' };
+    };
+
+    const overallHealth = determineOverallHealth();
+
+    // Calculate growth stage based on current day (0-100%)
+    const getGrowthStage = () => {
+        const percentage = Math.min(100, (currentDay / 100) * 100);
+
+        if (percentage < 20) return { stage: 'Planting Season', icon: '🌱' };
+        if (percentage < 40) return { stage: 'Growth Stage', icon: '🌿' };
+        if (percentage < 70) return { stage: 'Flowering Stage', icon: '🌸' };
+        if (percentage < 90) return { stage: 'Development Stage', icon: '🌾' };
+        return { stage: 'Harvest Season', icon: '🌽' };
+    };
+
+    const growthStage = getGrowthStage();
+
+    return (
+        <Card className="p-4">
+            <h2 className="text-xl font-bold mb-4">Simulation Results</h2>
+
+            <div className="space-y-4">
+                {/* Current stage indicator */}
+                <div className="bg-blue-50 p-4 rounded-lg flex items-center">
+                    <div className="text-2xl mr-3">{growthStage.icon}</div>
+                    <div>
+                        <h3 className="font-medium">{growthStage.stage}</h3>
+                        <div className="text-sm text-gray-600">Day {Math.floor(currentDay)} of 100</div>
+                    </div>
+                </div>
+
+                {/* Overall farm health */}
+                <div className={`bg-opacity-20 p-4 rounded-lg flex items-center ${overallHealth.color === 'text-green-600' ? 'bg-green-100' :
+                        overallHealth.color === 'text-yellow-600' ? 'bg-yellow-100' : 'bg-red-100'
+                    }`}>
+                    <div className="text-2xl mr-3">{overallHealth.icon}</div>
+                    <div>
+                        <h3 className="font-medium">Farm Health: {overallHealth.status}</h3>
+                        <div className="text-sm text-gray-600">
+                            {overallHealth.status === 'Healthy' ?
+                                'Your crops are thriving!' :
+                                overallHealth.status === 'Fair' ?
+                                    'Some crops may need attention' :
+                                    'Action recommended for optimal yields'}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Yield summary */}
+                <div className="bg-green-50 p-4 rounded-lg">
+                    <h3 className="font-medium mb-2">Estimated Yield</h3>
+                    <div className="text-2xl font-bold text-green-700 mb-1">
+                        {totalYield.toFixed(1)} tons
+                    </div>
+
+                    {totalImprovement > 0 && (
+                        <div className="flex items-center text-green-600">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M12 7a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0V8.414l-4.293 4.293a1 1 0 01-1.414 0L8 10.414l-4.293 4.293a1 1 0 01-1.414-1.414l5-5a1 1 0 011.414 0L11 10.586 14.586 7H12z" clipRule="evenodd" />
+                            </svg>
+                            <span>+{totalImprovement.toFixed(1)} tons with bio-products</span>
+                        </div>
+                    )}
+                </div>
+
+                {/* Crop-specific results */}
+                <div>
+                    <h3 className="font-medium mb-2">Crop Performance</h3>
+                    <div className="space-y-3 max-h-64 overflow-y-auto">
+                        {crops.map(crop => {
+                            const estimate = yieldEstimates[crop.id];
+                            if (!estimate) return null;
+
+                            // Determine crop health status
+                            let healthStatus = "Good";
+                            let healthColor = "text-green-600";
+                            let healthIcon = "✓";
+
+                            if (estimate.stressFactors) {
+                                const avgStress = (
+                                    estimate.stressFactors.temperature +
+                                    estimate.stressFactors.water +
+                                    estimate.stressFactors.soil
+                                ) / 3;
+
+                                if (avgStress > 0.6) {
+                                    healthStatus = "Poor";
+                                    healthColor = "text-red-600";
+                                    healthIcon = "⚠️";
+                                } else if (avgStress > 0.3) {
+                                    healthStatus = "Fair";
+                                    healthColor = "text-yellow-600";
+                                    healthIcon = "⚖️";
+                                }
+                            }
+
+                            // Get crop emoji based on type
+                            const getCropEmoji = (cropType: string) => {
+                                const cropEmojis: Record<string, string> = {
+                                    rice: '🌾',
+                                    wheat: '🌾',
+                                    corn: '🌽',
+                                    soybean: '🌱',
+                                    cotton: '🧶',
+                                    vegetable: '🥦',
+                                    fruit: '🍎'
+                                };
+
+                                return cropEmojis[cropType] || '🌱';
+                            };
+
+                            return (
+                                <div
+                                    key={crop.id}
+                                    className="p-3 border rounded-lg hover:bg-gray-50 cursor-pointer"
+                                    onClick={() => onCropSelect(crop.id)}
+                                >
+                                    <div className="flex justify-between items-center">
+                                        <div className="flex items-center font-medium">
+                                            <span className="mr-2">{getCropEmoji(crop.type)}</span>
+                                            {crop.name}
+                                        </div>
+                                        <div className={`${healthColor} font-medium`}>
+                                            {healthIcon} {healthStatus}
+                                        </div>
+                                    </div>
+                                    <div className="text-sm text-gray-600">
+                                        {estimate.estimatedYield.toFixed(1)} tons/acre
+                                        {" × "}{crop.acreage} acres = {estimate.totalEstimatedYield.toFixed(1)} tons
+                                    </div>
+
+                                    {/* Applied products */}
+                                    {selectedProducts[crop.id]?.length > 0 && (
+                                        <div className="mt-2 flex items-center">
+                                            <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full mr-2">
+                                                {selectedProducts[crop.id].length} bio-products applied
+                                            </span>
+                                            {estimate.productEffect && (
+                                                <span className="text-xs text-green-600">
+                                                    +{(estimate.productEffect * 100).toFixed(0)}% yield
+                                                </span>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {/* Quick recommendations */}
+                                    {healthStatus !== "Good" && (
+                                        <div className="mt-2 text-xs">
+                                            <span className="font-medium">Tip:</span> Click to view recommendations
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            </div>
+        </Card>
+    );
+};
+
+export default ResultsPanel;
+</file>
+
+<file path="app/simulation/components/SimulationControls.tsx">
+import React from 'react';
+
+interface SimulationControlsProps {
+    currentDay: number;
+    totalDays: number;
+    isPlaying: boolean;
+    playbackSpeed: number;
+    onDayChange: (day: number) => void;
+    onPlayToggle: () => void;
+    onSpeedChange: (speed: number) => void;
+    onReset: () => void;
+}
+
+const SimulationControls: React.FC<SimulationControlsProps> = ({
+    currentDay,
+    totalDays,
+    isPlaying,
+    playbackSpeed,
+    onDayChange,
+    onPlayToggle,
+    onSpeedChange,
+    onReset
+}) => {
+    // Convert day to season text and color
+    const getSeasonInfo = (day: number) => {
+        const percentage = (day / totalDays) * 100;
+
+        if (percentage < 15) {
+            return {
+                text: 'Planting Season',
+                color: 'bg-green-200',
+                icon: '🌱'
+            };
+        }
+        if (percentage < 40) {
+            return {
+                text: 'Growth Stage',
+                color: 'bg-green-300',
+                icon: '🌿'
+            };
+        }
+        if (percentage < 70) {
+            return {
+                text: 'Flowering Stage',
+                color: 'bg-green-400',
+                icon: '🌸'
+            };
+        }
+        if (percentage < 90) {
+            return {
+                text: 'Development Stage',
+                color: 'bg-yellow-300',
+                icon: '🌾'
+            };
+        }
+        return {
+            text: 'Harvest Season',
+            color: 'bg-yellow-500',
+            icon: '🌽'
+        };
+    };
+
+    const seasonInfo = getSeasonInfo(currentDay);
+
+    return (
+        <div className="w-full bg-white bg-opacity-90 backdrop-blur-sm rounded-lg shadow-lg p-4 mt-4">
+            <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center">
+                    <span className="text-2xl mr-2">{seasonInfo.icon}</span>
+                    <div>
+                        <h3 className="font-bold text-lg">{seasonInfo.text}</h3>
+                        <div className="text-sm text-gray-600">Day {currentDay} of {totalDays}</div>
+                    </div>
+                </div>
+
+                {/* Growing progress */}
+                <div className="bg-gray-200 h-4 rounded-full w-32 overflow-hidden">
+                    <div
+                        className={`h-full ${seasonInfo.color} transition-all duration-300`}
+                        style={{ width: `${(currentDay / totalDays) * 100}%` }}
+                    ></div>
+                </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+                {/* Timeline slider */}
+                <input
+                    type="range"
+                    min="0"
+                    max={totalDays}
+                    value={currentDay}
+                    onChange={(e) => onDayChange(parseInt(e.target.value))}
+                    className="flex-grow h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                    aria-label="Growth timeline"
+                />
+
+                {/* Play/Pause button */}
+                <button
+                    onClick={onPlayToggle}
+                    className={`w-12 h-12 flex items-center justify-center rounded-full text-white ${isPlaying ? 'bg-green-600' : 'bg-green-500 hover:bg-green-600'}`}
+                    aria-label={isPlaying ? "Pause" : "Play"}
+                >
+                    <span className="text-2xl">{isPlaying ? "⏸" : "▶"}</span>
+                </button>
+
+                {/* Speed buttons */}
+                <div className="flex space-x-1">
+                    {[1, 2, 5].map((speed) => (
+                        <button
+                            key={`speed-${speed}`}
+                            className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${playbackSpeed === speed
+                                    ? 'bg-green-500 text-white'
+                                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                }`}
+                            onClick={() => onSpeedChange(speed)}
+                            aria-label={`${speed}x speed`}
+                        >
+                            {speed}x
+                        </button>
+                    ))}
+                </div>
+
+                {/* Reset button */}
+                <button
+                    onClick={onReset}
+                    className="w-8 h-8 rounded-full flex items-center justify-center bg-gray-200 text-gray-700 hover:bg-gray-300"
+                    aria-label="Reset simulation"
+                >
+                    <span className="text-sm">↺</span>
+                </button>
+            </div>
+        </div>
+    );
+};
+
+export default SimulationControls;
+</file>
+
+<file path="app/simulation/components/ThreeFarmScene.tsx">
+import React, { useRef, useEffect, useState } from 'react';
+import * as THREE from 'three';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
+import { FarmData, Crop } from '@/types/farm';
+
+interface ThreeFarmSceneProps {
+  farmData: FarmData;
+  currentDay: number;
+  weatherData: any;
+  onCropSelect: (cropId: string) => void;
+}
+
+const ThreeFarmScene: React.FC<ThreeFarmSceneProps> = ({
+  farmData,
+  currentDay,
+  weatherData,
+  onCropSelect
+}) => {
+  const mountRef = useRef<HTMLDivElement>(null);
+  const sceneRef = useRef<THREE.Scene | null>(null);
+  const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
+  const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
+  const controlsRef = useRef<OrbitControls | null>(null);
+  const cropObjectsRef = useRef<Map<string, THREE.Object3D>>(new Map());
+  const raycasterRef = useRef<THREE.Raycaster>(new THREE.Raycaster());
+  const mouseRef = useRef<THREE.Vector2>(new THREE.Vector2());
+  const frameIdRef = useRef<number>(0);
+  const [hoveredCropId, setHoveredCropId] = useState<string | null>(null);
+  const [isInitialized, setIsInitialized] = useState(false);
+
+  // Setup Three.js scene
+  useEffect(() => {
+    if (!mountRef.current || isInitialized) return;
+
+    // Initialize three.js
+    const width = mountRef.current.clientWidth;
+    const height = mountRef.current.clientHeight;
+
+    // Create scene
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x87CEEB); // Sky blue
+    sceneRef.current = scene;
+
+    // Create camera
+    const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
+    camera.position.set(0, 15, 30);
+    cameraRef.current = camera;
+
+    // Create renderer
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(width, height);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    mountRef.current.appendChild(renderer.domElement);
+    rendererRef.current = renderer;
+
+    // Add orbit controls
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.target.set(0, 0, 0);
+    controls.update();
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+    controls.maxPolarAngle = Math.PI / 2 - 0.1; // Prevent seeing below ground
+    controlsRef.current = controls;
+
+    // Create lighting
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+    scene.add(ambientLight);
+
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    directionalLight.position.set(10, 20, 10);
+    directionalLight.castShadow = true;
+    directionalLight.shadow.mapSize.width = 2048;
+    directionalLight.shadow.mapSize.height = 2048;
+    scene.add(directionalLight);
+
+    // Create ground
+    const groundGeometry = new THREE.PlaneGeometry(50, 50);
+    const groundMaterial = new THREE.MeshStandardMaterial({ 
+      color: 0x7cbc30, // Green
+      roughness: 0.8, 
+      metalness: 0.2 
+    });
+    const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+    ground.rotation.x = -Math.PI / 2;
+    ground.position.y = 0;
+    ground.receiveShadow = true;
+    scene.add(ground);
+
+    // Animation loop
+    const animate = () => {
+      frameIdRef.current = requestAnimationFrame(animate);
+      
+      // Update controls
+      if (controlsRef.current) {
+        controlsRef.current.update();
+      }
+      
+      // Update animations based on time
+      const time = Date.now() * 0.001;
+      cropObjectsRef.current.forEach((object, cropId) => {
+        // Simple swaying animation for plants
+        if (object.userData.type === 'crop') {
+          const crop = object.userData.cropData as Crop;
+          const growthStage = getGrowthStage(crop.type, currentDay);
+          
+          // Apply different animations based on growth stage
+          if (growthStage !== 'seedling') {
+            // Gentle swaying for plants
+            const swayAmount = growthStage === 'harvesting' ? 0.01 : 0.03;
+            object.rotation.z = Math.sin(time + object.position.x * 0.5) * swayAmount;
+            object.rotation.x = Math.sin(time + object.position.z * 0.5) * swayAmount;
+          }
+          
+          // Scale based on growth
+          const baseScale = object.userData.baseScale || { x: 1, y: 1, z: 1 };
+          const growthFactor = getGrowthFactor(crop.type, currentDay);
+          object.scale.set(
+            baseScale.x * growthFactor,
+            baseScale.y * growthFactor,
+            baseScale.z * growthFactor
+          );
+          
+          // Highlight if hovered
+          if (cropId === hoveredCropId) {
+            object.scale.multiplyScalar(1.05);
+          }
+        }
+      });
+      
+      // Render scene
+      if (rendererRef.current && sceneRef.current && cameraRef.current) {
+        rendererRef.current.render(sceneRef.current, cameraRef.current);
+      }
+    };
+
+    animate();
+    setIsInitialized(true);
+
+    // Cleanup function
+    return () => {
+      cancelAnimationFrame(frameIdRef.current);
+      if (rendererRef.current && mountRef.current) {
+        mountRef.current.removeChild(rendererRef.current.domElement);
+      }
+      scene.clear();
+      rendererRef.current?.dispose();
+    };
+  }, [isInitialized]);
+
+  // Handle window resize
+  useEffect(() => {
+    const handleResize = () => {
+      if (!mountRef.current || !rendererRef.current || !cameraRef.current) return;
+      
+      const width = mountRef.current.clientWidth;
+      const height = mountRef.current.clientHeight;
+      
+      cameraRef.current.aspect = width / height;
+      cameraRef.current.updateProjectionMatrix();
+      
+      rendererRef.current.setSize(width, height);
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Create crops in the scene
+  useEffect(() => {
+    if (!sceneRef.current || !farmData.crops || farmData.crops.length === 0) return;
+
+    // Clear previous crop objects
+    cropObjectsRef.current.forEach((object) => {
+      sceneRef.current?.remove(object);
+    });
+    cropObjectsRef.current.clear();
+
+    // Layout parameters
+    const fieldWidth = 40;
+    const fieldDepth = 30;
+    const layoutCrops = () => {
+      const totalAcreage = farmData.totalAcreage;
+      const rows = Math.ceil(Math.sqrt(farmData.crops.length));
+      const cols = Math.ceil(farmData.crops.length / rows);
+      
+      let rowWidth = fieldWidth / rows;
+      let colDepth = fieldDepth / cols;
+      
+      farmData.crops.forEach((crop, index) => {
+        const row = Math.floor(index / cols);
+        const col = index % cols;
+        
+        // Calculate plot size based on crop acreage
+        const plotSize = (crop.acreage / totalAcreage) * (fieldWidth * fieldDepth);
+        const plotWidth = Math.sqrt(plotSize);
+        const plotDepth = plotSize / plotWidth;
+        
+        // Calculate position
+        const x = -fieldWidth/2 + rowWidth * (row + 0.5);
+        const z = -fieldDepth/2 + colDepth * (col + 0.5);
+        
+        // Create plot
+        createCropPlot(crop, x, z, plotWidth, plotDepth);
+      });
+    };
+    
+    layoutCrops();
+    
+  }, [farmData, sceneRef.current]);
+
+  // Create individual crop plots
+  const createCropPlot = (crop: Crop, x: number, z: number, width: number, depth: number) => {
+    if (!sceneRef.current) return;
+    
+    // Create plot ground
+    const plotGeometry = new THREE.PlaneGeometry(width, depth);
+    const plotMaterial = new THREE.MeshStandardMaterial({ 
+      color: 0x5d4037, // Brown soil
+      roughness: 1.0, 
+      metalness: 0.0
+    });
+    const plot = new THREE.Mesh(plotGeometry, plotMaterial);
+    plot.rotation.x = -Math.PI / 2;
+    plot.position.set(x, 0.01, z); // Slightly above ground to prevent z-fighting
+    plot.receiveShadow = true;
+    plot.userData = {
+      type: 'plot',
+      cropId: crop.id,
+      cropData: crop
+    };
+    sceneRef.current.add(plot);
+    
+    // Create crop instances
+    const plantCount = Math.min(20, Math.max(5, Math.round(crop.acreage * 2))); // Scale plant count with acreage
+    const cropGroup = new THREE.Group();
+    cropGroup.position.set(x, 0, z);
+    cropGroup.userData = {
+      type: 'crop',
+      cropId: crop.id,
+      cropData: crop,
+      baseScale: { x: 1, y: 1, z: 1 }
+    };
+    
+    // Create crop plants
+    for (let i = 0; i < plantCount; i++) {
+      const plant = createCropModel(crop);
+      
+      // Random position within plot
+      const offsetX = (Math.random() - 0.5) * width * 0.8;
+      const offsetZ = (Math.random() - 0.5) * depth * 0.8;
+      plant.position.set(offsetX, 0, offsetZ);
+      
+      // Random rotation for variety
+      plant.rotation.y = Math.random() * Math.PI * 2;
+      
+      cropGroup.add(plant);
+    }
+    
+    // Add label
+    const labelGeometry = new THREE.PlaneGeometry(1.5, 0.5);
+    const canvas = document.createElement('canvas');
+    canvas.width = 256;
+    canvas.height = 64;
+    const context = canvas.getContext('2d');
+    if (context) {
+      context.fillStyle = 'rgba(255, 255, 255, 0.8)';
+      context.fillRect(0, 0, 256, 64);
+      context.fillStyle = 'black';
+      context.font = 'bold 32px Arial';
+      context.textAlign = 'center';
+      context.textBaseline = 'middle';
+      context.fillText(crop.name, 128, 32);
+    }
+    
+    const labelTexture = new THREE.CanvasTexture(canvas);
+    const labelMaterial = new THREE.MeshBasicMaterial({
+      map: labelTexture,
+      transparent: true,
+      side: THREE.DoubleSide
+    });
+    
+    const label = new THREE.Mesh(labelGeometry, labelMaterial);
+    label.position.set(0, 2.5, 0);
+    label.rotation.x = -Math.PI / 6; // Tilt for better visibility
+    cropGroup.add(label);
+    
+    sceneRef.current.add(cropGroup);
+    cropObjectsRef.current.set(crop.id, cropGroup);
+  };
+
+  // Create crop models based on type
+  const createCropModel = (crop: Crop) => {
+    // Create different geometries based on crop type
+    let geometry: THREE.BufferGeometry;
+    let material: THREE.Material;
+    let cropModel: THREE.Object3D;
+    
+    switch(crop.type) {
+      case 'corn':
+        // Corn stalk - cylinder with leaves
+        geometry = new THREE.CylinderGeometry(0.05, 0.07, 1.5, 8);
+        material = new THREE.MeshStandardMaterial({ color: 0x2e7d32 }); // Dark green
+        cropModel = new THREE.Mesh(geometry, material);
+        cropModel.position.y = 0.75;
+        
+        // Corn cob
+        const cobGeometry = new THREE.CylinderGeometry(0.1, 0.1, 0.4, 8);
+        const cobMaterial = new THREE.MeshStandardMaterial({ color: 0xffeb3b }); // Yellow
+        const cob = new THREE.Mesh(cobGeometry, cobMaterial);
+        cob.position.set(0.15, 0.2, 0);
+        cob.rotation.z = Math.PI / 2;
+        cropModel.add(cob);
+        break;
+        
+      case 'wheat':
+        // Wheat stalk
+        geometry = new THREE.CylinderGeometry(0.02, 0.03, 1.2, 8);
+        material = new THREE.MeshStandardMaterial({ color: 0xd4c07e }); // Wheat color
+        cropModel = new THREE.Mesh(geometry, material);
+        cropModel.position.y = 0.6;
+        
+        // Wheat head
+        const headGeometry = new THREE.CylinderGeometry(0.03, 0.01, 0.3, 8);
+        const headMaterial = new THREE.MeshStandardMaterial({ color: 0xffedb6 }); // Light wheat
+        const head = new THREE.Mesh(headGeometry, headMaterial);
+        head.position.y = 0.75;
+        cropModel.add(head);
+        break;
+        
+      case 'rice':
+        // Rice stalks - thin cylinders
+        geometry = new THREE.CylinderGeometry(0.02, 0.025, 1.0, 8);
+        material = new THREE.MeshStandardMaterial({ color: 0x9ccc65 }); // Light green
+        cropModel = new THREE.Mesh(geometry, material);
+        cropModel.position.y = 0.5;
+        
+        // Rice head
+        const riceHeadGeometry = new THREE.SphereGeometry(0.08, 8, 8);
+        const riceHeadMaterial = new THREE.MeshStandardMaterial({ color: 0xf5f5f5 }); // White
+        const riceHead = new THREE.Mesh(riceHeadGeometry, riceHeadMaterial);
+        riceHead.position.y = 0.58;
+        riceHead.scale.set(0.6, 1, 0.6);
+        cropModel.add(riceHead);
+        break;
+        
+      case 'soybean':
+        // Soybean plant - bushy with small pods
+        geometry = new THREE.SphereGeometry(0.3, 8, 8);
+        material = new THREE.MeshStandardMaterial({ color: 0x33691e }); // Green
+        cropModel = new THREE.Mesh(geometry, material);
+        cropModel.position.y = 0.3;
+        cropModel.scale.set(1, 0.8, 1);
+        
+        // Soybean pods
+        for (let i = 0; i < 5; i++) {
+          const podGeometry = new THREE.SphereGeometry(0.05, 8, 8);
+          const podMaterial = new THREE.MeshStandardMaterial({ color: 0x8bc34a }); // Light green
+          const pod = new THREE.Mesh(podGeometry, podMaterial);
+          const angle = (i / 5) * Math.PI * 2;
+          pod.position.set(
+            Math.cos(angle) * 0.25,
+            0.1 + Math.random() * 0.2,
+            Math.sin(angle) * 0.25
+          );
+          cropModel.add(pod);
+        }
+        break;
+        
+      case 'cotton':
+        // Cotton plant - bushy base
+        geometry = new THREE.SphereGeometry(0.25, 8, 8);
+        material = new THREE.MeshStandardMaterial({ color: 0x33691e }); // Green
+        cropModel = new THREE.Mesh(geometry, material);
+        cropModel.position.y = 0.25;
+        cropModel.scale.set(1, 0.7, 1);
+        
+        // Cotton bolls
+        for (let i = 0; i < 4; i++) {
+          const bollGeometry = new THREE.SphereGeometry(0.08, 8, 8);
+          const bollMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff }); // White
+          const boll = new THREE.Mesh(bollGeometry, bollMaterial);
+          const angle = (i / 4) * Math.PI * 2;
+          boll.position.set(
+            Math.cos(angle) * 0.2,
+            0.2 + Math.random() * 0.1,
+            Math.sin(angle) * 0.2
+          );
+          cropModel.add(boll);
+        }
+        break;
+        
+      case 'vegetable':
+        // Generic vegetable plant - leafy
+        geometry = new THREE.SphereGeometry(0.3, 8, 8);
+        material = new THREE.MeshStandardMaterial({ color: 0x66bb6a }); // Mid green
+        cropModel = new THREE.Mesh(geometry, material);
+        cropModel.position.y = 0.2;
+        cropModel.scale.set(1, 0.6, 1);
+        break;
+        
+      case 'fruit':
+        // Fruit tree
+        const trunkGeometry = new THREE.CylinderGeometry(0.1, 0.15, 1.0, 8);
+        const trunkMaterial = new THREE.MeshStandardMaterial({ color: 0x795548 }); // Brown
+        cropModel = new THREE.Mesh(trunkGeometry, trunkMaterial);
+        cropModel.position.y = 0.5;
+        
+        // Tree canopy
+        const canopyGeometry = new THREE.SphereGeometry(0.6, 8, 8);
+        const canopyMaterial = new THREE.MeshStandardMaterial({ color: 0x2e7d32 }); // Dark green
+        const canopy = new THREE.Mesh(canopyGeometry, canopyMaterial);
+        canopy.position.y = 1.2;
+        cropModel.add(canopy);
+        
+        // Add some fruits
+        for (let i = 0; i < 6; i++) {
+          const fruitGeometry = new THREE.SphereGeometry(0.07, 8, 8);
+          const fruitMaterial = new THREE.MeshStandardMaterial({ color: 0xff0000 }); // Red
+          const fruit = new THREE.Mesh(fruitGeometry, fruitMaterial);
+          
+          // Position fruits around the canopy
+          const phi = Math.acos(-1 + (2 * i) / 6);
+          const theta = Math.sqrt(6 * Math.PI) * phi;
+          
+          fruit.position.set(
+            0.5 * Math.cos(theta) * Math.sin(phi),
+            1.2 + 0.5 * Math.cos(phi),
+            0.5 * Math.sin(theta) * Math.sin(phi)
+          );
+          
+          cropModel.add(fruit);
+        }
+        break;
+        
+      default:
+        // Default simple plant
+        geometry = new THREE.ConeGeometry(0.2, 1.0, 8);
+        material = new THREE.MeshStandardMaterial({ color: 0x4caf50 }); // Green
+        cropModel = new THREE.Mesh(geometry, material);
+        cropModel.position.y = 0.5;
+    }
+    
+    // Add cast shadow
+    cropModel.castShadow = true;
+    cropModel.receiveShadow = true;
+    
+    // Create a group to hold the crop
+    const group = new THREE.Group();
+    group.add(cropModel);
+    
+    return group;
+  };
+  
+  // Mouse interaction handlers
+  const handleMouseMove = (event: React.MouseEvent) => {
+    if (!mountRef.current || !cameraRef.current || !sceneRef.current) return;
+    
+    // Calculate mouse position in normalized device coordinates
+    const rect = mountRef.current.getBoundingClientRect();
+    mouseRef.current.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+    mouseRef.current.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+    
+    // Raycast to detect hoverable objects
+    raycasterRef.current.setFromCamera(mouseRef.current, cameraRef.current);
+    const intersects = raycasterRef.current.intersectObjects(sceneRef.current.children, true);
+
+    // Check if we're hovering over a crop
+    let foundCropId: string | null = null;
+    for (const intersect of intersects) {
+      // Find the crop id by traversing up the object hierarchy
+      let current: THREE.Object3D | null = intersect.object;
+      while (current) {
+        if (current.userData?.cropId) {
+          foundCropId = current.userData.cropId;
+          break;
+        }
+        current = current.parent;
+      }
+      if (foundCropId) break;
+    }
+    
+    // Update hovered crop state
+    setHoveredCropId(foundCropId);
+    
+    // Update cursor style
+    if (foundCropId) {
+      document.body.style.cursor = 'pointer';
+    } else {
+      document.body.style.cursor = 'default';
+    }
+  };
+
+  const handleMouseClick = (event: React.MouseEvent) => {
+    if (hoveredCropId) {
+      onCropSelect(hoveredCropId);
+    }
+  };
+
+  // Helper functions
+  const getGrowthStage = (cropType: string, day: number) => {
+    // Simplified growth stages: seedling, growing, mature, harvesting
+    const dayPercentage = Math.min(100, (day / 100) * 100);
+    
+    if (dayPercentage < 20) return 'seedling';
+    if (dayPercentage < 60) return 'growing';
+    if (dayPercentage < 90) return 'mature';
+    return 'harvesting';
+  };
+  
+  const getGrowthFactor = (cropType: string, day: number) => {
+    // Return a scale factor based on growth stage
+    const stage = getGrowthStage(cropType, day);
+    
+    const growthFactors = {
+      seedling: 0.3,
+      growing: 0.6,
+      mature: 0.9,
+      harvesting: 1.0
+    };
+    
+    return growthFactors[stage as keyof typeof growthFactors];
+  };
+
+  // Update existing crops based on current day
+  useEffect(() => {
+    // This will be handled by the animation loop
+  }, [currentDay]);
+
+  // Add weather effects based on current weather data
+  useEffect(() => {
+    if (!sceneRef.current || !weatherData || !weatherData.forecast) return;
+    
+    // Remove existing weather effects
+    const existingEffects = sceneRef.current.children.filter(
+      child => child.userData?.type === 'weather'
+    );
+    existingEffects.forEach(effect => sceneRef.current?.remove(effect));
+    
+    // Get current weather data
+    const currentWeatherIndex = Math.min(
+      weatherData.forecast.daily.length - 1,
+      Math.floor(currentDay / 7)
+    );
+    const currentWeather = weatherData.forecast.daily[currentWeatherIndex];
+    
+    // Add weather effects based on conditions
+    // Rain particles
+    if (currentWeather.precipitation > 3) {
+      const rainCount = Math.round(currentWeather.precipitation * 50);
+      const rainGeometry = new THREE.BufferGeometry();
+      const rainPositions = new Float32Array(rainCount * 3);
+      const rainVelocities = new Float32Array(rainCount);
+      
+      for (let i = 0; i < rainCount; i++) {
+        const i3 = i * 3;
+        rainPositions[i3] = (Math.random() - 0.5) * 50; // x
+        rainPositions[i3 + 1] = Math.random() * 20 + 10; // y
+        rainPositions[i3 + 2] = (Math.random() - 0.5) * 50; // z
+        rainVelocities[i] = 0.1 + Math.random() * 0.3; // Speed
+      }
+      
+      rainGeometry.setAttribute('position', new THREE.BufferAttribute(rainPositions, 3));
+      
+      const rainMaterial = new THREE.PointsMaterial({
+        color: 0x99ccff,
+        size: 0.1,
+        transparent: true,
+        opacity: 0.6
+      });
+      
+      const rain = new THREE.Points(rainGeometry, rainMaterial);
+      rain.userData = { type: 'weather', effect: 'rain', velocities: rainVelocities };
+      sceneRef.current.add(rain);
+    }
+    
+    // Clouds
+    const cloudCount = 5 + Math.round(currentWeather.humidity / 10);
+    for (let i = 0; i < cloudCount; i++) {
+      const cloudGeometry = new THREE.SphereGeometry(2 + Math.random() * 3, 6, 6);
+      const cloudMaterial = new THREE.MeshStandardMaterial({
+        color: 0xffffff,
+        transparent: true,
+        opacity: 0.5 + Math.random() * 0.3
+      });
+      
+      const cloud = new THREE.Mesh(cloudGeometry, cloudMaterial);
+      cloud.position.set(
+        (Math.random() - 0.5) * 40,
+        15 + Math.random() * 5,
+        (Math.random() - 0.5) * 40
+      );
+      cloud.scale.set(1, 0.6, 1);
+      cloud.userData = { 
+        type: 'weather', 
+        effect: 'cloud',
+        speed: 0.01 + Math.random() * 0.02,
+        direction: Math.random() * Math.PI * 2
+      };
+      
+      sceneRef.current.add(cloud);
+    }
+  }, [weatherData, currentDay, sceneRef.current]);
+
+  return (
+    <div 
+      ref={mountRef} 
+      className="w-full h-[500px] rounded-lg overflow-hidden"
+      onMouseMove={handleMouseMove}
+      onClick={handleMouseClick}
+    >
+      {/* This div will be used to mount the Three.js scene */}
+      {hoveredCropId && (
+        <div className="absolute bottom-4 right-4 bg-white bg-opacity-80 p-2 rounded shadow-md">
+          <p className="font-medium">
+            {farmData.crops.find(c => c.id === hoveredCropId)?.name}
+          </p>
+          <p className="text-xs text-gray-600">Click to view details</p>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default ThreeFarmScene;
+</file>
+
+<file path="types/simulation.ts">
+import { Crop } from './farm';
+import { Product } from './products';
+
+export interface SimulationState {
+    // Timeline
+    currentDay: number;
+    totalDays: number;
+    isPlaying: boolean;
+    playbackSpeed: number;
+
+    // Selections
+    selectedCropId: string | null;
+    selectedProducts: Record<string, string[]>; // Map of cropId -> productIds
+
+    // Results
+    yieldEstimates: Record<string, CropYieldEstimate>;
+    environmentalData: EnvironmentalData | null;
+}
+
+export interface CropYieldEstimate {
+    cropId: string;
+    cropName: string;
+    cropType: string;
+    baseYieldPerAcre: number;
+    estimatedYield: number;
+    totalEstimatedYield: number;
+    potentialImprovement: number;
+    totalPotentialImprovement: number;
+    productEffect?: number;
+    stressFactors: {
+        temperature: number;
+        water: number;
+        soil: number;
+        overall: number;
+    };
+}
+
+export interface EnvironmentalData {
+    forecast?: {
         daily: Array<{
             date: string;
             temperature: {
@@ -120,519 +1821,51 @@ interface WeatherData {
         hourly?: Array<any>;
     };
     historical?: any;
-    soil?: any;
-}
-
-/**
- * Environmental data API route handler
- * Fetches weather forecast and soil data from CE Hub API
- */
-export async function GET(request: NextRequest) {
-    const searchParams = request.nextUrl.searchParams;
-    const lat = searchParams.get('lat');
-    const lng = searchParams.get('lng');
-    const type = searchParams.get('type') || 'forecast';
-    const startDate = searchParams.get('startDate') || new Date().toISOString().split('T')[0];
-    const endDate = searchParams.get('endDate') || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-
-    // Validate required parameters
-    if (!lat || !lng) {
-        return NextResponse.json(
-            { error: 'Missing required parameters: lat and lng' },
-            { status: 400 }
-        );
-    }
-
-    try {
-        // Get API config based on endpoint type
-        let apiUrl, apiKey, apiEndpoint, requestBody, requestMethod = 'GET';
-        let headers: Record<string, string> = { 'Content-Type': 'application/json' };
-
-        // Configure API parameters based on request type
-        if (type === 'forecast') {
-            // FORECAST API CONFIGURATION
-            apiUrl = process.env.CE_HUB_FORECAST_API_URL;
-            apiKey = process.env.CE_HUB_FORECAST_API_KEY;
-
-            if (!apiUrl || !apiKey) {
-                console.log('Forecast API config missing, using mock data');
-                return NextResponse.json(await getMockData(type, lat, lng, startDate, endDate));
-            }
-
-            console.log(`Forecast API config: ${apiUrl} ${apiKey}`);
-            headers['ApiKey'] = apiKey;
-
-            // Match Postman example for Forecast API path
-            apiEndpoint = `${apiUrl}/api/Forecast/ShortRangeForecastDaily?latitude=${lat}&longitude=${lng}&startDate=${startDate}&endDate=${endDate}&supplier=Meteoblue&measureLabel=TempAir_DailyMax;TempAir_DailyMin;TempAir_DailyAvg;Precip_DailySum;HumidityRel_DailyAvg;WindSpeed_DailyAvg;GlobalRadiation_DailySum&format=json`;
-        } 
-        else if (type === 'historical') {
-            // HISTORICAL API CONFIGURATION
-            apiUrl = process.env.CE_HUB_HISTORICAL_API_URL;
-            apiKey = process.env.CE_HUB_HISTORICAL_API_KEY;
-
-            if (!apiUrl || !apiKey) {
-                console.log('Historical API config missing, using mock data');
-                return NextResponse.json(await getMockData(type, lat, lng, startDate, endDate));
-            }
-
-            console.log(`Historical API config: ${apiUrl} ${apiKey}`);
-            
-            // For historical API, key goes in URL
-            apiEndpoint = `${apiUrl}?apikey=${apiKey}`;
-            requestMethod = 'POST';
-            
-            // Match Postman example for Historical API
-            requestBody = {
-                units: {
-                    temperature: "C",
-                    velocity: "km/h", // Changed from m/s to match Postman example
-                    length: "metric",
-                    energy: "watts"
-                },
-                geometry: {
-                    type: "MultiPoint", // Changed from Point to match Postman
-                    coordinates: [[parseFloat(lng), parseFloat(lat)]],
-                    locationNames: ["Location"],
-                    mode: "preferLandWithMatchingElevation"
-                },
-                format: "json",
-                timeIntervals: [`${startDate}T+00:00/${endDate}T+00:00`],
-                timeIntervalsAlignment: "none",
-                queries: [
-                    {
-                        domain: "ERA5T", // Matches Postman example
-                        gapFillDomain: "NEMSGLOBAL",
-                        timeResolution: "daily",
-                        codes: [
-                            { 
-                                code: 11, 
-                                level: "2 m above gnd",
-                                aggregation: "mean"
-                            }
-                        ]
-                    },
-                    {
-                        domain: "ERA5T",
-                        gapFillDomain: "NEMSGLOBAL",
-                        timeResolution: "daily",
-                        codes: [
-                            {
-                                code: 61,
-                                level: "sfc",
-                                aggregation: "sum"
-                            }
-                        ]
-                    }
-                ]
-            };
-        } 
-        else if (type === 'soil') {
-            // SOIL API CONFIGURATION
-            apiUrl = process.env.CE_HUB_HISTORICAL_API_URL;
-            apiKey = process.env.CE_HUB_HISTORICAL_API_KEY;
-
-            if (!apiUrl || !apiKey) {
-                console.log('Soil API config missing, using mock data');
-                return NextResponse.json(await getMockData(type, lat, lng, startDate, endDate));
-            }
-
-            console.log(`Soil API config: ${apiUrl} ${apiKey}`);
-            
-            // For soil API, key goes in URL
-            apiEndpoint = `${apiUrl}?apikey=${apiKey}`;
-            requestMethod = 'POST';
-            
-            // Match Postman example for Soil API exactly
-            requestBody = {
-                units: {
-                    temperature: "C",
-                    velocity: "km/h",
-                    length: "metric",
-                    energy: "watts"
-                },
-                geometry: {
-                    type: "MultiPoint",
-                    coordinates: [[parseFloat(lng), parseFloat(lat)]],
-                    locationNames: ["Location"],
-                    mode: "preferLandWithMatchingElevation"
-                },
-                format: "json",
-                timeIntervals: [`${startDate}T+00:00/${endDate}T+00:00`],
-                timeIntervalsAlignment: "none",
-                queries: [
-                    {
-                        domain: "SOILGRIDS1000", // Critical: Correct domain from Postman
-                        gapFillDomain: null,
-                        timeResolution: "static",
-                        codes: [
-                            { code: 812, level: "5 cm" } // Specific soil code from Postman
-                        ]
-                    },
-                    {
-                        domain: "SOILGRIDS1000",
-                        gapFillDomain: null,
-                        timeResolution: "static",
-                        codes: [
-                            { code: 806, level: "0 cm" } // Specific soil code from Postman
-                        ]
-                    },
-                    {
-                        domain: "WISE30",
-                        gapFillDomain: null,
-                        timeResolution: "static",
-                        codes: [
-                            { code: 831, level: "0-20 cm" } // Additional soil property
-                        ]
-                    }
-                ]
-            };
-        } 
-        else {
-            return NextResponse.json(
-                { error: `Unsupported data type: ${type}` },
-                { status: 400 }
-            );
-        }
-
-        // Make request to CE Hub API with enhanced logging
-        console.log(`Making ${requestMethod} request to: ${apiEndpoint.split('?')[0]}`);
-
-        const response = requestMethod === 'GET'
-            ? await fetch(apiEndpoint, { headers })
-            : await fetch(apiEndpoint, {
-                method: 'POST',
-                headers,
-                body: JSON.stringify(requestBody)
-            });
-
-        console.log(`CE Hub API response: ${response.status} ${response.statusText}`);
-
-        // Handle different response statuses appropriately
-        let responseData;
-        
-        if (response.status === 204) {
-            // Handle No Content responses
-            console.log('Received 204 No Content response - using empty data set');
-            responseData = { data: [] };
-        } 
-        else if (!response.ok) {
-            // Try to get error details for better diagnostics
-            let errorDetails = '';
-            try {
-                const errorText = await response.text();
-                errorDetails = errorText.substring(0, 200);
-                console.error(`API Error response details: ${errorDetails}`);
-            } catch (readError) {
-                console.error('Could not read error response body');
-            }
-            
-            // Throw appropriate error based on status code
-            if (response.status === 401 || response.status === 403) {
-                throw new Error(`Authentication failed for CE Hub ${type} API: Invalid API key`);
-            } else if (response.status === 400) {
-                throw new Error(`Invalid request to CE Hub ${type} API: Bad Request - ${errorDetails || 'Check parameters'}`);
-            } else if (response.status === 404) {
-                throw new Error(`Endpoint not found for CE Hub ${type} API: Check URL configuration`);
-            } else {
-                throw new Error(`CE Hub API responded with ${response.status}: ${response.statusText}`);
-            }
-        } 
-        else {
-            // Process successful responses
-            try {
-                const contentType = response.headers.get('content-type');
-                if (contentType && contentType.includes('application/json')) {
-                    responseData = await response.json();
-                } else {
-                    console.log(`Non-JSON response received: ${contentType}`);
-                    const textResponse = await response.text();
-                    console.log(`Response preview: ${textResponse.substring(0, 100)}...`);
-                    responseData = { data: [] };
-                }
-            } catch (parseError) {
-                console.error('Error parsing response:', parseError);
-                responseData = { data: [] };
-            }
-        }
-
-        // Process the data based on the type
-        const processedData = processApiResponse(type, responseData);
-        console.log(`Successfully processed ${type} data`);
-
-        return NextResponse.json(processedData);
-    } catch (error) {
-        console.error('Error fetching environmental data:', error);
-
-        // Return mock data if API request fails
-        const mockData = await getMockData(type, lat, lng, startDate, endDate);
-        return NextResponse.json(mockData);
-    }
-}
-
-/**
- * Process the API response based on the type of data requested
- */
-function processApiResponse(type: string, responseData: any) {
-    switch (type) {
-        case 'forecast':
-            // Extract and format forecast data from the response
-            const dailyData = responseData.data?.map((item: any) => ({
-                date: item.date,
-                temperature: {
-                    max: item.TempAir_DailyMax,
-                    min: item.TempAir_DailyMin,
-                    avg: item.TempAir_DailyAvg
-                },
-                precipitation: item.Precip_DailySum,
-                humidity: item.HumidityRel_DailyAvg,
-                windSpeed: item.WindSpeed_DailyAvg,
-                globalRadiation: item.GlobalRadiation_DailySum
-            })) || [];
-
-            return {
-                forecast: {
-                    daily: dailyData
-                }
-            };
-
-        case 'historical':
-            // Process historical data - improved with structured response
-            try {
-                // Extract temperature and precipitation data
-                const tempData = responseData.data?.find((dataset: any) => 
-                    dataset.domain === 'ERA5T' && dataset.code === 11);
-                
-                const precipData = responseData.data?.find((dataset: any) => 
-                    dataset.domain === 'ERA5T' && dataset.code === 61);
-                
-                return {
-                    historical: {
-                        temperature: {
-                            data: tempData?.data || [],
-                            unit: 'C'
-                        },
-                        precipitation: {
-                            data: precipData?.data || [],
-                            unit: 'mm'
-                        },
-                        raw: responseData // Include raw data for debugging/reference
-                    }
-                };
-            } catch (err) {
-                console.error('Error processing historical data:', err);
-                return { historical: responseData };
-            }
-
-        case 'soil':
-            // Process soil data with improved extraction
-            try {
-                // Find soil datasets from response
-                const soilTexture = responseData.data?.find((dataset: any) => 
-                    dataset.domain === 'SOILGRIDS1000' && dataset.code === 806);
-                
-                const soilProps = responseData.data?.find((dataset: any) => 
-                    dataset.domain === 'SOILGRIDS1000' && dataset.code === 812);
-                
-                const soilWise = responseData.data?.find((dataset: any) => 
-                    dataset.domain === 'WISE30' && dataset.code === 831);
-                
-                // Extract soil texture class
-                const textureValue = getFirstDataValue(soilTexture);
-                const texture = getSoilTextureDescription(textureValue);
-                
-                // Extract soil properties
-                const properties = {
-                    bulkDensity: getFirstDataValue(soilProps) ?? 0,
-                    organicMatter: getFirstDataValue(soilWise) ?? 0,
-                    ph: 6.5, // Default if not available
-                    waterHoldingCapacity: 0.2,
-                    cationExchangeCapacity: 10
-                };
-                
-                return {
-                    soil: {
-                        texture,
-                        properties,
-                        raw: responseData // Include raw data for debugging
-                    }
-                };
-            } catch (err) {
-                console.error('Error processing soil data:', err);
-                return {
-                    soil: {
-                        texture: "Unknown",
-                        properties: {
-                            bulkDensity: 0,
-                            organicMatter: 0,
-                            ph: 0
-                        },
-                        error: 'Failed to process soil data'
-                    }
-                };
-            }
-
-        default:
-            return responseData;
-    }
-}
-
-/**
- * Helper to get the first data value from a dataset
- */
-function getFirstDataValue(dataset: any): number | null {
-    if (!dataset) {
-        console.warn('Dataset not found in response');
-        return null;
-    }
-    
-    if (!dataset.data || !dataset.data.length) {
-        console.warn(`Dataset ${dataset.domain}/${dataset.code} has no data points`);
-        return null;
-    }
-    
-    return typeof dataset.data[0].value === 'number' ? dataset.data[0].value : null;
-}
-
-/**
- * Get the soil texture description based on the value
- */
-function getSoilTextureDescription(textureValue: number | null): string {
-    if (textureValue === null) return "Unknown";
-    
-    // Soil texture classification mapping
-    const textureClassMap: { [key: number]: string } = {
-        1: "Clay (Cl)",
-        2: "Silty Clay (SiCl)",
-        3: "Sandy Clay (SaCl)",
-        4: "Clay Loam (ClLo)",
-        5: "Silty Clay Loam (SiClLo)",
-        6: "Sandy Clay Loam (SaClLo)",
-        7: "Loam (Lo)",
-        8: "Silty Loam (SiLo)",
-        9: "Sandy Loam (SaLo)",
-        10: "Silt (Si)",
-        11: "Loamy Sand (LoSa)",
-        12: "Sand (Sa)"
+    soil?: {
+        texture: string;
+        properties: {
+            bulkDensity: number;
+            organicMatter: number;
+            ph: number;
+            waterHoldingCapacity: number;
+            cationExchangeCapacity: number;
+        };
     };
-    
-    return textureClassMap[textureValue] || "Unknown";
-}
-
-/**
- * Get mock data for development and testing
- */
-async function getMockData(type: string, lat: string, lng: string, startDate: string, endDate: string): Promise<any> {
-    // Generate realistic mock data based on type and params
-    switch (type) {
-        case 'forecast':
-            return generateMockForecast(startDate, endDate);
-        case 'historical':
-            return generateMockHistorical(startDate, endDate);
-        case 'soil':
-            return generateMockSoil(lat, lng);
-        default:
-            return { error: "Unknown data type requested" };
-    }
-}
-
-/**
- * Generate mock forecast data
- */
-function generateMockForecast(startDate: string, endDate: string) {
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    const days = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
-
-    const dailyData = [];
-
-    for (let i = 0; i < days; i++) {
-        const currentDate = new Date(start);
-        currentDate.setDate(start.getDate() + i);
-
-        // Generate somewhat realistic weather data with some variability
-        const baseTemp = 25 + Math.sin(i / 3) * 5; // Oscillating temperature pattern
-
-        dailyData.push({
-            date: currentDate.toISOString().split('T')[0],
-            temperature: {
-                max: baseTemp + Math.random() * 3,
-                min: baseTemp - 10 + Math.random() * 3,
-                avg: baseTemp - 5 + Math.random() * 2
-            },
-            precipitation: Math.random() > 0.7 ? Math.random() * 10 : 0, // 30% chance of rain
-            humidity: 50 + Math.random() * 30,
-            windSpeed: 2 + Math.random() * 6,
-            globalRadiation: 5000 + Math.random() * 3000
-        });
-    }
-
-    return {
-        forecast: {
-            daily: dailyData
-        }
+    stress_factors?: {
+        current: {
+            drought: number;
+            heat: number;
+            nutrient_deficiency: number;
+        };
+        forecast: Array<{
+            date: string;
+            drought: number;
+            heat: number;
+            nutrient_deficiency: number;
+        }>;
     };
 }
 
-/**
- * Generate mock historical data
- */
-function generateMockHistorical(startDate: string, endDate: string) {
-    // Simple mock historical data
-    return {
-        historical: {
-            temperature: {
-                avg: 24.5,
-                max: 35.2,
-                min: 15.1
-            },
-            precipitation: {
-                annual: 850,
-                monthly: [45, 60, 75, 90, 120, 65, 45, 35, 70, 95, 85, 65]
-            }
-        }
-    };
+export interface SimulationAction {
+    type: string;
+    payload?: any;
 }
 
-/**
- * Generate mock soil data
- */
-function generateMockSoil(lat: string, lng: string) {
-    // Generate mock soil data based on coordinates
-    // This is very simplified - real soil data would be much more complex
-    const latNum = parseFloat(lat);
-    const lngNum = parseFloat(lng);
+// Simulation event types that can be tracked
+export type SimulationEvent =
+    | 'CROP_PLANTED'
+    | 'PRODUCT_APPLIED'
+    | 'STRESS_DETECTED'
+    | 'HARVEST_READY'
+    | 'WEATHER_CHANGE';
 
-    // Use coordinates to deterministically generate different soil types
-    // This creates a simple pattern across different locations
-    const soilTextureIndex = Math.floor((Math.abs(latNum * 10) + Math.abs(lngNum * 10)) % 12) + 1;
-
-    const soilTextureMap: { [key: number]: string } = {
-        1: "Clay (Cl)",
-        2: "Silty Clay (SiCl)",
-        3: "Sandy Clay (SaCl)",
-        4: "Clay Loam (ClLo)",
-        5: "Silty Clay Loam (SiClLo)",
-        6: "Sandy Clay Loam (SaClLo)",
-        7: "Loam (Lo)",
-        8: "Silty Loam (SiLo)",
-        9: "Sandy Loam (SaLo)",
-        10: "Silt (Si)",
-        11: "Loamy Sand (LoSa)",
-        12: "Sand (Sa)"
-    };
-
-    return {
-        soil: {
-            texture: soilTextureMap[soilTextureIndex],
-            properties: {
-                bulkDensity: 1.2 + Math.random() * 0.4,
-                organicMatter: 1 + Math.random() * 3,
-                ph: 5.5 + Math.random() * 2.5,
-                waterHoldingCapacity: 0.1 + Math.random() * 0.2,
-                cationExchangeCapacity: 5 + Math.random() * 15
-            }
-        }
-    };
+export interface SimulationEventData {
+    type: SimulationEvent;
+    day: number;
+    cropId?: string;
+    productId?: string;
+    message: string;
+    severity?: 'info' | 'warning' | 'success';
 }
 </file>
 
@@ -640,7 +1873,7 @@ function generateMockSoil(lat: string, lng: string) {
 import { NextRequest, NextResponse } from 'next/server';
 
 // Import mock products data
-import mockProductsData from '@/public/data/mock-products.json';
+import mockProductsData from '@/lib/data/products.json';
 
 export async function GET(request: NextRequest) {
     try {
@@ -661,232 +1894,357 @@ export async function GET(request: NextRequest) {
 }
 </file>
 
-<file path="components/farm/CropSelector.tsx">
+<file path="app/simulation/page.tsx">
 "use client";
 
-import React, { useState } from 'react';
-import { Crop, CropType } from '@/types/farm';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
+import { useFarmData } from '@/lib/hooks/useFarmData';
+import { useProducts } from '@/lib/hooks/useProducts';
+import { Crop } from '@/types/farm';
+import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
+import FarmGameView from './components/FarmGameView';
+import ThreeFarmScene from './components/ThreeFarmScene';
+import SimulationControls from './components/SimulationControls';
+import CropInfoPanel from './components/CropInfoPanel';
+import ProductSelector from './components/ProductSelector';
+import ResultsPanel from './components/ResultsPanel';
+import { fetchEnvironmentalData, estimateCropYield } from '@/lib/services/farmEnvironmentService';
 
-interface CropSelectorProps {
-    crops: Crop[];
-    onChange: (crops: Crop[]) => void;
-    totalFarmSize: number;
-    className?: string;
-}
+export default function SimulationPage() {
+    const router = useRouter();
+    const { farmData, isLoading: isFarmLoading, error: farmError } = useFarmData();
 
-// Crop type options with metadata
-const cropOptions: Array<{
-    value: CropType;
-    label: string;
-    description: string;
-    icon: string;
-}> = [
-        {
-            value: 'rice',
-            label: 'Rice',
-            description: 'Thrives in warm, wet conditions with high rainfall',
-            icon: '🌾',
-        },
-        {
-            value: 'wheat',
-            label: 'Wheat',
-            description: 'Adaptable to various climates, requires moderate rainfall',
-            icon: '🌿',
-        },
-        {
-            value: 'corn',
-            label: 'Corn',
-            description: 'Needs warm soil and plenty of sunshine',
-            icon: '🌽',
-        },
-        {
-            value: 'soybean',
-            label: 'Soybean',
-            description: 'Fixes nitrogen, grows well in warm climates',
-            icon: '🌱',
-        },
-        {
-            value: 'cotton',
-            label: 'Cotton',
-            description: 'Requires long, frost-free periods and plenty of sunshine',
-            icon: '🧶',
-        },
-        {
-            value: 'vegetable',
-            label: 'Vegetables',
-            description: 'Various vegetable crops with different requirements',
-            icon: '🥦',
-        },
-        {
-            value: 'fruit',
-            label: 'Fruit',
-            description: 'Tree and shrub fruits typically requiring good drainage',
-            icon: '🍎',
-        },
-    ];
+    // Simulation state
+    const [currentDay, setCurrentDay] = useState(0);
+    const [totalDays, setTotalDays] = useState(100); // A growing season of 100 days
+    const [isPlaying, setIsPlaying] = useState(false);
+    const [playbackSpeed, setPlaybackSpeed] = useState(1);
+    const [selectedCropId, setSelectedCropId] = useState<string | null>(null);
+    const [view3D, setView3D] = useState(false);
+    const [environmentalData, setEnvironmentalData] = useState<any>(null);
+    const [isEnvironmentLoading, setIsEnvironmentLoading] = useState(true);
+    const [selectedProducts, setSelectedProducts] = useState<Record<string, string[]>>({});
+    const [yieldEstimates, setYieldEstimates] = useState<Record<string, any>>({});
 
-export default function CropSelector({
-    crops,
-    onChange,
-    totalFarmSize,
-    className = '',
-}: CropSelectorProps) {
-    const [validationError, setValidationError] = useState<string | null>(null);
+    // Find the selected crop
+    const selectedCrop = selectedCropId
+        ? farmData.crops.find(crop => crop.id === selectedCropId) || null
+        : null;
 
-    // Calculate total acreage currently allocated
-    const allocatedAcreage = crops.reduce((sum, crop) => sum + crop.acreage, 0);
-    const remainingAcreage = totalFarmSize - allocatedAcreage;
+    // Load environmental data
+    useEffect(() => {
+        const loadEnvironmentalData = async () => {
+            if (!farmData.location || farmData.location.lat === 0) return;
 
-    // Function to add a new crop
-    const handleAddCrop = () => {
-        // Default to first available crop type not yet selected
-        const usedCropTypes = crops.map(crop => crop.type);
-        const availableCropType = cropOptions.find(
-            option => !usedCropTypes.includes(option.value)
-        )?.value || cropOptions[0].value;
+            setIsEnvironmentLoading(true);
+            try {
+                const data = await fetchEnvironmentalData(farmData.location);
+                setEnvironmentalData(data);
 
-        const newCrop: Crop = {
-            id: `crop_${Date.now()}`,
-            name: `New ${cropOptions.find(c => c.value === availableCropType)?.label || 'Crop'}`,
-            type: availableCropType,
-            acreage: Math.min(1, remainingAcreage) // Use remaining acreage or 1, whichever is smaller
+                // Calculate initial yield estimates
+                if (data && farmData.crops.length > 0) {
+                    const estimates: Record<string, any> = {};
+                    farmData.crops.forEach(crop => {
+                        estimates[crop.id] = estimateCropYield(crop, data);
+                    });
+                    setYieldEstimates(estimates);
+                }
+
+            } catch (error) {
+                console.error('Error loading environmental data:', error);
+            } finally {
+                setIsEnvironmentLoading(false);
+            }
         };
 
-        if (remainingAcreage <= 0) {
-            setValidationError('Cannot add more crops. Increase farm size or reduce other crop acreages.');
-            return;
+        loadEnvironmentalData();
+    }, [farmData.location, farmData.crops]);
+
+    // Simulation loop using requestAnimationFrame
+    useEffect(() => {
+        let lastUpdateTime = 0;
+        let animationFrameId: number;
+
+        const updateSimulation = (timestamp: number) => {
+            if (!isPlaying) return;
+
+            // Calculate time delta and update day based on playback speed
+            const deltaTime = timestamp - lastUpdateTime;
+
+            // Update every 50ms for smooth animation
+            if (deltaTime > 50) {
+                // Progress 0.1 days per 50ms at 1x speed
+                const dayIncrement = (deltaTime / 500) * playbackSpeed;
+
+                setCurrentDay(prevDay => {
+                    const newDay = prevDay + dayIncrement;
+                    return newDay >= totalDays ? totalDays : newDay;
+                });
+
+                lastUpdateTime = timestamp;
+            }
+
+            animationFrameId = requestAnimationFrame(updateSimulation);
+        };
+
+        if (isPlaying) {
+            lastUpdateTime = performance.now();
+            animationFrameId = requestAnimationFrame(updateSimulation);
         }
 
-        onChange([...crops, newCrop]);
-        setValidationError(null);
-    };
+        return () => {
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+            }
+        };
+    }, [isPlaying, playbackSpeed, totalDays]);
 
-    // Function to remove a crop
-    const handleRemoveCrop = (cropId: string) => {
-        onChange(crops.filter(crop => crop.id !== cropId));
-        setValidationError(null);
-    };
+    // Handle manual day change via slider
+    const handleDayChange = useCallback((day: number) => {
+        setCurrentDay(day);
+    }, []);
 
-    // Function to update a crop
-    const handleCropChange = (index: number, updatedCrop: Partial<Crop>) => {
-        const newCrops = [...crops];
-        newCrops[index] = { ...newCrops[index], ...updatedCrop };
+    // Toggle play/pause
+    const handlePlayToggle = useCallback(() => {
+        setIsPlaying(prev => !prev);
 
-        // Validate acreage
-        const totalAcreage = newCrops.reduce((sum, crop) => sum + crop.acreage, 0);
-        if (totalAcreage > totalFarmSize) {
-            setValidationError(`Total acreage (${totalAcreage}) exceeds farm size (${totalFarmSize})`);
-            // Still update the state, but with the validation error
-        } else {
-            setValidationError(null);
+        // If we're at the end, restart
+        setCurrentDay(prev =>
+            prev >= totalDays ? 0 : prev
+        );
+    }, [totalDays]);
+
+    // Handle speed change
+    const handleSpeedChange = useCallback((speed: number) => {
+        setPlaybackSpeed(speed);
+    }, []);
+
+    // Reset simulation
+    const handleReset = useCallback(() => {
+        setCurrentDay(0);
+        setIsPlaying(false);
+    }, []);
+
+    // Handle crop selection
+    const handleCropSelect = useCallback((cropId: string) => {
+        setSelectedCropId(prevId => prevId === cropId ? null : cropId);
+    }, []);
+
+    // Handle closing crop info panel
+    const handleClosePanel = useCallback(() => {
+        setSelectedCropId(null);
+    }, []);
+
+    // Handle product selection
+    const handleProductsSelected = useCallback((cropId: string, productIds: string[]) => {
+        setSelectedProducts(prev => ({
+            ...prev,
+            [cropId]: productIds
+        }));
+
+        // Update yield estimates when products are applied
+        if (environmentalData && yieldEstimates[cropId]) {
+            setYieldEstimates(prev => {
+                const crop = farmData.crops.find(c => c.id === cropId);
+                if (!crop) return prev;
+
+                const baseEstimate = estimateCropYield(crop, environmentalData);
+
+                // Calculate improvement based on products
+                // Each product can improve yield by 5-15%
+                const productEffect = productIds.length * (0.05 + Math.random() * 0.1);
+
+                const improvedEstimate = {
+                    ...baseEstimate,
+                    estimatedYield: baseEstimate.estimatedYield * (1 + productEffect),
+                    totalEstimatedYield: baseEstimate.totalEstimatedYield * (1 + productEffect),
+                    productEffect: productEffect
+                };
+
+                return {
+                    ...prev,
+                    [cropId]: improvedEstimate
+                };
+            });
         }
+    }, [environmentalData, farmData.crops, yieldEstimates]);
 
-        onChange(newCrops);
-    };
+    // Handle product application
+    const handleApplyProduct = useCallback((cropId: string, productId: string) => {
+        setSelectedProducts(prev => {
+            const currentProducts = prev[cropId] || [];
+            if (!currentProducts.includes(productId)) {
+                return {
+                    ...prev,
+                    [cropId]: [...currentProducts, productId]
+                };
+            }
+            return prev;
+        });
+    }, []);
+
+    // Toggle between 2D and 3D views
+    const toggleView = useCallback(() => {
+        setView3D(prev => !prev);
+    }, []);
+
+    // Return to setup
+    const goToSetup = useCallback(() => {
+        router.push('/');
+    }, [router]);
+
+    // Calculate total yield across all crops
+    const totalYield = Object.values(yieldEstimates).reduce((sum, est) => {
+        return sum + (est.totalEstimatedYield || 0);
+    }, 0);
+
+    // Calculate total yield improvement from products
+    const totalImprovement = Object.values(yieldEstimates).reduce((sum, est: any) => {
+        return sum + ((est.productEffect || 0) * est.totalEstimatedYield || 0);
+    }, 0);
+
+    // Loading state
+    if (isFarmLoading || isEnvironmentLoading) {
+        return (
+            <div className="container mx-auto max-w-5xl py-8 px-4">
+                <Card className="p-6">
+                    <div className="flex flex-col items-center justify-center h-64">
+                        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-green-500 mb-4"></div>
+                        <p className="text-lg">Loading simulation...</p>
+                    </div>
+                </Card>
+            </div>
+        );
+    }
+
+    // Error state
+    if (farmError) {
+        return (
+            <div className="container mx-auto max-w-5xl py-8 px-4">
+                <Card className="p-6">
+                    <div className="text-center p-8">
+                        <h2 className="text-2xl text-red-500 mb-4">Error Loading Simulation</h2>
+                        <p className="mb-6">{farmError}</p>
+                        <Button onClick={goToSetup}>Return to Setup</Button>
+                    </div>
+                </Card>
+            </div>
+        );
+    }
+
+    // No farm data
+    if (!farmData || !farmData.crops || farmData.crops.length === 0) {
+        return (
+            <div className="container mx-auto max-w-5xl py-8 px-4">
+                <Card className="p-6">
+                    <div className="text-center p-8">
+                        <h2 className="text-2xl mb-4">No Farm Data Available</h2>
+                        <p className="mb-6">Please complete the farm setup first.</p>
+                        <Button onClick={goToSetup}>Go to Farm Setup</Button>
+                    </div>
+                </Card>
+            </div>
+        );
+    }
 
     return (
-        <div className={`space-y-4 ${className}`}>
-            <div className="flex justify-between items-center">
-                <h3 className="text-lg font-medium">Crops ({crops.length})</h3>
-                <div className="text-sm text-gray-500">
-                    Acreage: {allocatedAcreage} / {totalFarmSize}
-                    ({remainingAcreage >= 0 ? `${remainingAcreage} available` : `${Math.abs(remainingAcreage)} over limit`})
-                </div>
+        <div className="container mx-auto max-w-5xl py-8 px-4">
+            {/* Header section */}
+            <div className="mb-6 text-center">
+                <h1 className="text-3xl font-bold mb-2">Farm Simulation</h1>
+                <p className="text-gray-600">
+                    Watch your crops grow through the season and see how biological products can help improve yields
+                </p>
             </div>
 
-            {validationError && (
-                <div className="p-3 bg-red-50 border border-red-200 text-red-600 rounded-md text-sm">
-                    {validationError}
-                </div>
-            )}
-
-            <div className="space-y-3">
-                {crops.map((crop, index) => (
-                    <div
-                        key={crop.id}
-                        className="p-4 border rounded-lg bg-white shadow-sm flex flex-col sm:flex-row gap-4"
-                    >
-                        <div className="flex-1 space-y-4">
-                            <div>
-                                <label htmlFor={`crop-name-${index}`} className="block text-sm font-medium text-gray-700 mb-1">
-                                    Crop Name
-                                </label>
-                                <input
-                                    id={`crop-name-${index}`}
-                                    type="text"
-                                    value={crop.name}
-                                    onChange={(e) => handleCropChange(index, { name: e.target.value })}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500"
-                                />
-                            </div>
-
-                            <div>
-                                <label htmlFor={`crop-type-${index}`} className="block text-sm font-medium text-gray-700 mb-1">
-                                    Crop Type
-                                </label>
-                                <select
-                                    id={`crop-type-${index}`}
-                                    value={crop.type}
-                                    onChange={(e) => handleCropChange(index, { type: e.target.value as CropType })}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500"
-                                >
-                                    {cropOptions.map(option => (
-                                        <option key={option.value} value={option.value}>
-                                            {option.icon} {option.label}
-                                        </option>
-                                    ))}
-                                </select>
-                                <p className="mt-1 text-xs text-gray-500">
-                                    {cropOptions.find(c => c.value === crop.type)?.description}
-                                </p>
-                            </div>
-                        </div>
-
-                        <div className="flex flex-row sm:flex-col justify-between items-center sm:items-end space-y-0 sm:space-y-4">
-                            <div className="w-full max-w-[120px]">
-                                <label htmlFor={`crop-acreage-${index}`} className="block text-sm font-medium text-gray-700 mb-1">
-                                    Acreage
-                                </label>
-                                <input
-                                    id={`crop-acreage-${index}`}
-                                    type="number"
-                                    min="0.1"
-                                    step="0.1"
-                                    value={crop.acreage}
-                                    onChange={(e) => handleCropChange(index, { acreage: parseFloat(e.target.value) || 0 })}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500"
-                                />
-                            </div>
-
-                            <Button
-                                variant="destructive"
-                                size="sm"
-                                onClick={() => handleRemoveCrop(crop.id)}
-                                className="mt-4 sm:mt-0"
-                                aria-label={`Remove ${crop.name}`}
-                            >
-                                Remove
-                            </Button>
-                        </div>
+            {/* Main content area */}
+            <div className="flex flex-col gap-6">
+                {/* Primary section with farm view and controls */}
+                <Card className="relative p-4">
+                    {/* View toggle */}
+                    <div className="absolute top-4 right-4 z-10">
+                        <Button
+                            onClick={toggleView}
+                            size="sm"
+                            variant="outline"
+                        >
+                            Switch to {view3D ? '2D' : '3D'} View
+                        </Button>
                     </div>
-                ))}
-            </div>
 
-            <Button
-                variant="outline"
-                onClick={handleAddCrop}
-                disabled={remainingAcreage <= 0}
-                className="w-full"
-            >
-                + Add Crop
-            </Button>
+                    {/* Farm visualization */}
+                    <div className="relative mb-4">
+                        {view3D ? (
+                            <ThreeFarmScene
+                                farmData={farmData}
+                                currentDay={currentDay}
+                                weatherData={environmentalData}
+                                onCropSelect={handleCropSelect}
+                            />
+                        ) : (
+                            <FarmGameView
+                                farmData={farmData}
+                                currentDay={currentDay}
+                                weatherData={environmentalData}
+                                onCropSelect={handleCropSelect}
+                            />
+                        )}
 
-            {crops.length === 0 && (
-                <div className="text-center p-8 border border-dashed rounded-lg">
-                    <p className="text-gray-500">No crops added yet. Click the button above to add your first crop.</p>
+                        {/* Crop Info Panel (shows when a crop is selected) */}
+                        {selectedCrop && (
+                            <CropInfoPanel
+                                crop={selectedCrop}
+                                environmentalData={environmentalData}
+                                currentDay={currentDay}
+                                onApplyProduct={handleApplyProduct}
+                                onClose={handleClosePanel}
+                            />
+                        )}
+                    </div>
+
+                    {/* Simulation Controls */}
+                    <SimulationControls
+                        currentDay={currentDay}
+                        totalDays={totalDays}
+                        isPlaying={isPlaying}
+                        playbackSpeed={playbackSpeed}
+                        onDayChange={handleDayChange}
+                        onPlayToggle={handlePlayToggle}
+                        onSpeedChange={handleSpeedChange}
+                        onReset={handleReset}
+                    />
+                </Card>
+
+                {/* Results and products section */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <ResultsPanel
+                        crops={farmData.crops}
+                        yieldEstimates={yieldEstimates}
+                        selectedProducts={selectedProducts}
+                        onCropSelect={handleCropSelect}
+                        currentDay={currentDay}
+                    />
+
+                    {/* Product Selector */}
+                    <Card className="p-4">
+                        <h2 className="text-xl font-bold mb-4">Bio-Products</h2>
+                        <ProductSelector
+                            crops={farmData.crops}
+                            onProductsSelected={handleProductsSelected}
+                            selectedProducts={selectedProducts}
+                        />
+                    </Card>
                 </div>
-            )}
+
+                {/* Return to setup button */}
+                <div className="text-center mt-4">
+                    <Button variant="outline" onClick={goToSetup}>
+                        Return to Farm Setup
+                    </Button>
+                </div>
+            </div>
         </div>
     );
 }
@@ -1829,6 +3187,80 @@ export default function MapComponent({ location, onLocationChange }: MapComponen
 }
 </file>
 
+<file path="components/styles/Navbar.css">
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+.navbar-link {
+  position: relative;
+  color: #1f2937;
+  transition: color 0.3s ease;
+  font-family: "Inter", sans-serif;
+  font-weight: 500;
+  padding: 0.5rem 0;
+}
+
+.navbar-link::after {
+  content: '';
+  position: absolute;
+  width: 0;
+  height: 2px;
+  bottom: -2px;
+  left: 0;
+  background-color: rgba(16, 185, 129, 0.7); /* Green color for Farm Bio-Boost theme */
+  transition: width 0.3s ease;
+}
+
+.navbar-link:hover {
+  color: rgb(16, 185, 129);
+}
+
+.navbar-link:hover::after {
+  width: 100%;
+}
+
+/* Mobile menu styling */
+.navbar-menu {
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* For screens smaller than 768px (md breakpoint in Tailwind) */
+@media (max-width: 767px) {
+  .hamburger-button {
+    display: flex;
+  }
+}
+
+/* For screens larger than 768px */
+@media (min-width: 768px) {
+  .hamburger-button {
+    display: none;
+  }
+}
+
+/* Add a backdrop for the mobile menu when open */
+.navbar-menu-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(2px);
+  z-index: 40;
+}
+</file>
+
 <file path="components/ui/Button.tsx">
 "use client";
 
@@ -1893,6 +3325,37 @@ export const Card: React.FC<CardProps> = ({ children, className = '' }) => {
         </div>
     );
 };
+</file>
+
+<file path="components/ui/Navbar.tsx">
+import Link from 'next/link';
+import Image from 'next/image';
+
+export default function Navbar() {
+    return (
+        <header className="bg-green-500 py-3">
+            <div className="container max-w-screen-xl mx-auto px-4 lg:px-20 flex justify-between items-center">
+                {/* Project Name */}
+                <Link href="/" className="flex items-center">
+                    <div className="text-xl font-bold text-white">Farm Bio-Boost</div>
+                    <div className="text-sm text-white ml-2">Simulator</div>
+                </Link>
+
+                {/* Powered by Syngenta */}
+                <div className="flex items-center text-sm text-gray-600">
+                    <span className="mr-2">Powered by</span>
+                    <Image
+                        src="/images/syngenta-logo.png"
+                        alt="Syngenta"
+                        width={100}
+                        height={30}
+                        className="w-auto"
+                    />
+                </div>
+            </div>
+        </header>
+    );
+}
 </file>
 
 <file path="lib/data/products.json">
@@ -2876,6 +4339,26 @@ export async function analyzeFarm(farmData: FarmData) {
 }
 </file>
 
+<file path="public/file.svg">
+<svg fill="none" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><path d="M14.5 13.5V5.41a1 1 0 0 0-.3-.7L9.8.29A1 1 0 0 0 9.08 0H1.5v13.5A2.5 2.5 0 0 0 4 16h8a2.5 2.5 0 0 0 2.5-2.5m-1.5 0v-7H8v-5H3v12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1M9.5 5V2.12L12.38 5zM5.13 5h-.62v1.25h2.12V5zm-.62 3h7.12v1.25H4.5zm.62 3h-.62v1.25h7.12V11z" clip-rule="evenodd" fill="#666" fill-rule="evenodd"/></svg>
+</file>
+
+<file path="public/globe.svg">
+<svg fill="none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><g clip-path="url(#a)"><path fill-rule="evenodd" clip-rule="evenodd" d="M10.27 14.1a6.5 6.5 0 0 0 3.67-3.45q-1.24.21-2.7.34-.31 1.83-.97 3.1M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16m.48-1.52a7 7 0 0 1-.96 0H7.5a4 4 0 0 1-.84-1.32q-.38-.89-.63-2.08a40 40 0 0 0 3.92 0q-.25 1.2-.63 2.08a4 4 0 0 1-.84 1.31zm2.94-4.76q1.66-.15 2.95-.43a7 7 0 0 0 0-2.58q-1.3-.27-2.95-.43a18 18 0 0 1 0 3.44m-1.27-3.54a17 17 0 0 1 0 3.64 39 39 0 0 1-4.3 0 17 17 0 0 1 0-3.64 39 39 0 0 1 4.3 0m1.1-1.17q1.45.13 2.69.34a6.5 6.5 0 0 0-3.67-3.44q.65 1.26.98 3.1M8.48 1.5l.01.02q.41.37.84 1.31.38.89.63 2.08a40 40 0 0 0-3.92 0q.25-1.2.63-2.08a4 4 0 0 1 .85-1.32 7 7 0 0 1 .96 0m-2.75.4a6.5 6.5 0 0 0-3.67 3.44 29 29 0 0 1 2.7-.34q.31-1.83.97-3.1M4.58 6.28q-1.66.16-2.95.43a7 7 0 0 0 0 2.58q1.3.27 2.95.43a18 18 0 0 1 0-3.44m.17 4.71q-1.45-.12-2.69-.34a6.5 6.5 0 0 0 3.67 3.44q-.65-1.27-.98-3.1" fill="#666"/></g><defs><clipPath id="a"><path fill="#fff" d="M0 0h16v16H0z"/></clipPath></defs></svg>
+</file>
+
+<file path="public/next.svg">
+<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 394 80"><path fill="#000" d="M262 0h68.5v12.7h-27.2v66.6h-13.6V12.7H262V0ZM149 0v12.7H94v20.4h44.3v12.6H94v21h55v12.6H80.5V0h68.7zm34.3 0h-17.8l63.8 79.4h17.9l-32-39.7 32-39.6h-17.9l-23 28.6-23-28.6zm18.3 56.7-9-11-27.1 33.7h17.8l18.3-22.7z"/><path fill="#000" d="M81 79.3 17 0H0v79.3h13.6V17l50.2 62.3H81Zm252.6-.4c-1 0-1.8-.4-2.5-1s-1.1-1.6-1.1-2.6.3-1.8 1-2.5 1.6-1 2.6-1 1.8.3 2.5 1a3.4 3.4 0 0 1 .6 4.3 3.7 3.7 0 0 1-3 1.8zm23.2-33.5h6v23.3c0 2.1-.4 4-1.3 5.5a9.1 9.1 0 0 1-3.8 3.5c-1.6.8-3.5 1.3-5.7 1.3-2 0-3.7-.4-5.3-1s-2.8-1.8-3.7-3.2c-.9-1.3-1.4-3-1.4-5h6c.1.8.3 1.6.7 2.2s1 1.2 1.6 1.5c.7.4 1.5.5 2.4.5 1 0 1.8-.2 2.4-.6a4 4 0 0 0 1.6-1.8c.3-.8.5-1.8.5-3V45.5zm30.9 9.1a4.4 4.4 0 0 0-2-3.3 7.5 7.5 0 0 0-4.3-1.1c-1.3 0-2.4.2-3.3.5-.9.4-1.6 1-2 1.6a3.5 3.5 0 0 0-.3 4c.3.5.7.9 1.3 1.2l1.8 1 2 .5 3.2.8c1.3.3 2.5.7 3.7 1.2a13 13 0 0 1 3.2 1.8 8.1 8.1 0 0 1 3 6.5c0 2-.5 3.7-1.5 5.1a10 10 0 0 1-4.4 3.5c-1.8.8-4.1 1.2-6.8 1.2-2.6 0-4.9-.4-6.8-1.2-2-.8-3.4-2-4.5-3.5a10 10 0 0 1-1.7-5.6h6a5 5 0 0 0 3.5 4.6c1 .4 2.2.6 3.4.6 1.3 0 2.5-.2 3.5-.6 1-.4 1.8-1 2.4-1.7a4 4 0 0 0 .8-2.4c0-.9-.2-1.6-.7-2.2a11 11 0 0 0-2.1-1.4l-3.2-1-3.8-1c-2.8-.7-5-1.7-6.6-3.2a7.2 7.2 0 0 1-2.4-5.7 8 8 0 0 1 1.7-5 10 10 0 0 1 4.3-3.5c2-.8 4-1.2 6.4-1.2 2.3 0 4.4.4 6.2 1.2 1.8.8 3.2 2 4.3 3.4 1 1.4 1.5 3 1.5 5h-5.8z"/></svg>
+</file>
+
+<file path="public/vercel.svg">
+<svg fill="none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1155 1000"><path d="m577.3 0 577.4 1000H0z" fill="#fff"/></svg>
+</file>
+
+<file path="public/window.svg">
+<svg fill="none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path fill-rule="evenodd" clip-rule="evenodd" d="M1.5 2.5h13v10a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1zM0 1h16v11.5a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 0 12.5zm3.75 4.5a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5M7 4.75a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0m1.75.75a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5" fill="#666"/></svg>
+</file>
+
 <file path="types/farm.ts">
 export interface GeoLocation {
     lat: number;
@@ -2935,157 +4418,6 @@ export interface ApplicationSchedule {
 }
 </file>
 
-<file path="app/globals.css">
-@import "tailwindcss";
-
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-body {
-  background: var(--background);
-  color: var(--foreground);
-}
-
-button,
-a {
-  cursor: pointer;
-}
-
-@layer base {
-  h1 {
-    @apply text-3xl font-bold;
-  }
-  h2 {
-    @apply text-2xl font-bold;
-  }
-  h3 {
-    @apply text-xl font-bold;
-  }
-}
-</file>
-
-<file path="app/layout.tsx">
-import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
-import './globals.css';
-
-const inter = Inter({ subsets: ['latin'] });
-
-export const metadata: Metadata = {
-    title: 'Farm Bio-Boost Simulator',
-    description: 'Simulate the effects of biological products on crop performance',
-};
-
-export default function RootLayout({
-    children,
-}: {
-    children: React.ReactNode;
-}) {
-    return (
-        <html lang="en">
-            <body className={`${inter.className} bg-gray-50 min-h-screen`}>
-                <header className="bg-green-600 text-white py-4 shadow-md">
-                    <div className="container mx-auto px-4">
-                        <div className="flex items-center justify-between">
-                            <h1 className="text-2xl font-bold">Farm Bio-Boost Simulator</h1>
-                            <div className="flex items-center space-x-2">
-                                <span className="text-sm">Powered by</span>
-                                <img
-                                    src="/images/syngenta-logo.png"
-                                    alt="Syngenta"
-                                    className="h-8"
-                                    width={120}
-                                    height={32}
-                                />
-                            </div>
-                        </div>
-                    </div>
-                </header>
-                <main className="container mx-auto px-4 py-8">{children}</main>
-                <footer className="bg-gray-100 border-t py-6 mt-12">
-                    <div className="container mx-auto px-4 text-center text-gray-600 text-sm">
-                        <p>Farm Bio-Boost Simulator - START Hack 2025</p>
-                    </div>
-                </footer>
-            </body>
-        </html>
-    );
-}
-</file>
-
-<file path="app/page.tsx">
-import Link from 'next/link';
-import { Button } from '@/components/ui/Button';
-import { Card } from '@/components/ui/Card';
-import FarmSetup from '@/components/farm/FarmSetup';
-
-export default function HomePage() {
-    return (
-        <div className="max-w-5xl mx-auto">
-            <section className="mb-12 text-center">
-                <h2 className="text-3xl font-bold mb-4">
-                    Welcome to the Farm Bio-Boost Simulator
-                </h2>
-                <p className="text-xl text-gray-600 mb-8">
-                    Test the effects of biological products on your farm before applying them in real life
-                </p>
-                <div className="flex justify-center gap-6">
-                    <Card className="max-w-md p-6 bg-white rounded-lg shadow-lg">
-                        <h3 className="text-xl font-semibold mb-4">
-                            Benefits of biological products:
-                        </h3>
-                        <ul className="list-disc pl-5 space-y-2 text-left mb-6">
-                            <li>Improve crop resilience to environmental stresses</li>
-                            <li>Enhance nutrient uptake efficiency</li>
-                            <li>Boost overall yield and quality</li>
-                            <li>Support sustainable farming practices</li>
-                        </ul>
-                    </Card>
-                </div>
-            </section>
-
-            <section className="mb-12">
-                <h2 className="text-2xl font-bold mb-6 text-center">Set Up Your Farm</h2>
-                <FarmSetup />
-            </section>
-
-            <section className="text-center">
-                <p className="text-gray-600 mb-4">
-                    Already have a farm set up?
-                </p>
-                <Link href="/simulation">
-                    <Button variant="outline" size="lg">
-                        Go to Simulation
-                    </Button>
-                </Link>
-            </section>
-        </div>
-    );
-}
-</file>
-
-<file path="public/file.svg">
-<svg fill="none" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><path d="M14.5 13.5V5.41a1 1 0 0 0-.3-.7L9.8.29A1 1 0 0 0 9.08 0H1.5v13.5A2.5 2.5 0 0 0 4 16h8a2.5 2.5 0 0 0 2.5-2.5m-1.5 0v-7H8v-5H3v12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1M9.5 5V2.12L12.38 5zM5.13 5h-.62v1.25h2.12V5zm-.62 3h7.12v1.25H4.5zm.62 3h-.62v1.25h7.12V11z" clip-rule="evenodd" fill="#666" fill-rule="evenodd"/></svg>
-</file>
-
-<file path="public/globe.svg">
-<svg fill="none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><g clip-path="url(#a)"><path fill-rule="evenodd" clip-rule="evenodd" d="M10.27 14.1a6.5 6.5 0 0 0 3.67-3.45q-1.24.21-2.7.34-.31 1.83-.97 3.1M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16m.48-1.52a7 7 0 0 1-.96 0H7.5a4 4 0 0 1-.84-1.32q-.38-.89-.63-2.08a40 40 0 0 0 3.92 0q-.25 1.2-.63 2.08a4 4 0 0 1-.84 1.31zm2.94-4.76q1.66-.15 2.95-.43a7 7 0 0 0 0-2.58q-1.3-.27-2.95-.43a18 18 0 0 1 0 3.44m-1.27-3.54a17 17 0 0 1 0 3.64 39 39 0 0 1-4.3 0 17 17 0 0 1 0-3.64 39 39 0 0 1 4.3 0m1.1-1.17q1.45.13 2.69.34a6.5 6.5 0 0 0-3.67-3.44q.65 1.26.98 3.1M8.48 1.5l.01.02q.41.37.84 1.31.38.89.63 2.08a40 40 0 0 0-3.92 0q.25-1.2.63-2.08a4 4 0 0 1 .85-1.32 7 7 0 0 1 .96 0m-2.75.4a6.5 6.5 0 0 0-3.67 3.44 29 29 0 0 1 2.7-.34q.31-1.83.97-3.1M4.58 6.28q-1.66.16-2.95.43a7 7 0 0 0 0 2.58q1.3.27 2.95.43a18 18 0 0 1 0-3.44m.17 4.71q-1.45-.12-2.69-.34a6.5 6.5 0 0 0 3.67 3.44q-.65-1.27-.98-3.1" fill="#666"/></g><defs><clipPath id="a"><path fill="#fff" d="M0 0h16v16H0z"/></clipPath></defs></svg>
-</file>
-
-<file path="public/next.svg">
-<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 394 80"><path fill="#000" d="M262 0h68.5v12.7h-27.2v66.6h-13.6V12.7H262V0ZM149 0v12.7H94v20.4h44.3v12.6H94v21h55v12.6H80.5V0h68.7zm34.3 0h-17.8l63.8 79.4h17.9l-32-39.7 32-39.6h-17.9l-23 28.6-23-28.6zm18.3 56.7-9-11-27.1 33.7h17.8l18.3-22.7z"/><path fill="#000" d="M81 79.3 17 0H0v79.3h13.6V17l50.2 62.3H81Zm252.6-.4c-1 0-1.8-.4-2.5-1s-1.1-1.6-1.1-2.6.3-1.8 1-2.5 1.6-1 2.6-1 1.8.3 2.5 1a3.4 3.4 0 0 1 .6 4.3 3.7 3.7 0 0 1-3 1.8zm23.2-33.5h6v23.3c0 2.1-.4 4-1.3 5.5a9.1 9.1 0 0 1-3.8 3.5c-1.6.8-3.5 1.3-5.7 1.3-2 0-3.7-.4-5.3-1s-2.8-1.8-3.7-3.2c-.9-1.3-1.4-3-1.4-5h6c.1.8.3 1.6.7 2.2s1 1.2 1.6 1.5c.7.4 1.5.5 2.4.5 1 0 1.8-.2 2.4-.6a4 4 0 0 0 1.6-1.8c.3-.8.5-1.8.5-3V45.5zm30.9 9.1a4.4 4.4 0 0 0-2-3.3 7.5 7.5 0 0 0-4.3-1.1c-1.3 0-2.4.2-3.3.5-.9.4-1.6 1-2 1.6a3.5 3.5 0 0 0-.3 4c.3.5.7.9 1.3 1.2l1.8 1 2 .5 3.2.8c1.3.3 2.5.7 3.7 1.2a13 13 0 0 1 3.2 1.8 8.1 8.1 0 0 1 3 6.5c0 2-.5 3.7-1.5 5.1a10 10 0 0 1-4.4 3.5c-1.8.8-4.1 1.2-6.8 1.2-2.6 0-4.9-.4-6.8-1.2-2-.8-3.4-2-4.5-3.5a10 10 0 0 1-1.7-5.6h6a5 5 0 0 0 3.5 4.6c1 .4 2.2.6 3.4.6 1.3 0 2.5-.2 3.5-.6 1-.4 1.8-1 2.4-1.7a4 4 0 0 0 .8-2.4c0-.9-.2-1.6-.7-2.2a11 11 0 0 0-2.1-1.4l-3.2-1-3.8-1c-2.8-.7-5-1.7-6.6-3.2a7.2 7.2 0 0 1-2.4-5.7 8 8 0 0 1 1.7-5 10 10 0 0 1 4.3-3.5c2-.8 4-1.2 6.4-1.2 2.3 0 4.4.4 6.2 1.2 1.8.8 3.2 2 4.3 3.4 1 1.4 1.5 3 1.5 5h-5.8z"/></svg>
-</file>
-
-<file path="public/vercel.svg">
-<svg fill="none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1155 1000"><path d="m577.3 0 577.4 1000H0z" fill="#fff"/></svg>
-</file>
-
-<file path="public/window.svg">
-<svg fill="none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path fill-rule="evenodd" clip-rule="evenodd" d="M1.5 2.5h13v10a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1zM0 1h16v11.5a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 0 12.5zm3.75 4.5a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5M7 4.75a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0m1.75.75a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5" fill="#666"/></svg>
-</file>
-
 <file path=".gitignore">
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
@@ -3138,36 +4470,6 @@ const nextConfig: NextConfig = {
 };
 
 export default nextConfig;
-</file>
-
-<file path="package.json">
-{
-  "name": "start-hack",
-  "version": "0.1.0",
-  "private": true,
-  "scripts": {
-    "dev": "next dev --turbopack",
-    "build": "next build",
-    "start": "next start",
-    "lint": "next lint"
-  },
-  "dependencies": {
-    "leaflet": "^1.9.4",
-    "next": "15.2.3",
-    "react": "19.0.0-rc.1",
-    "react-dom": "19.0.0-rc.1",
-    "react-leaflet": "5.0.0-rc.2"
-  },
-  "devDependencies": {
-    "@tailwindcss/postcss": "^4",
-    "@types/leaflet": "^1.9.16",
-    "@types/node": "^20",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "tailwindcss": "^4",
-    "typescript": "^5"
-  }
-}
 </file>
 
 <file path="postcss.config.mjs">
@@ -3244,6 +4546,1353 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
   "exclude": ["node_modules"]
+}
+</file>
+
+<file path="app/api/environmental-data/route.ts">
+import { NextRequest, NextResponse } from 'next/server';
+
+// Define interfaces for API responses
+interface CEHubResponse {
+    success: boolean;
+    data: any;
+    error?: string;
+}
+
+interface WeatherData {
+    forecast: {
+        daily: Array<{
+            date: string;
+            temperature: {
+                max: number;
+                min: number;
+                avg: number;
+            };
+            precipitation: number;
+            humidity: number;
+            windSpeed: number;
+            globalRadiation: number;
+        }>;
+        hourly?: Array<any>;
+    };
+    historical?: any;
+    soil?: any;
+}
+
+/**
+ * Environmental data API route handler
+ * Fetches weather forecast and soil data from CE Hub API
+ */
+export async function GET(request: NextRequest) {
+    const searchParams = request.nextUrl.searchParams;
+    const lat = searchParams.get('lat');
+    const lng = searchParams.get('lng');
+    const type = searchParams.get('type') || 'forecast';
+    const startDate = searchParams.get('startDate') || new Date().toISOString().split('T')[0];
+    const endDate = searchParams.get('endDate') || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
+    // Validate required parameters
+    if (!lat || !lng) {
+        return NextResponse.json(
+            { error: 'Missing required parameters: lat and lng' },
+            { status: 400 }
+        );
+    }
+
+    try {
+        // Get API config based on endpoint type
+        let apiUrl, apiKey, apiEndpoint, requestBody, requestMethod = 'GET';
+        let headers: Record<string, string> = { 'Content-Type': 'application/json' };
+
+        // Configure API parameters based on request type
+        if (type === 'forecast') {
+            // FORECAST API CONFIGURATION
+            apiUrl = process.env.CE_HUB_FORECAST_API_URL;
+            apiKey = process.env.CE_HUB_FORECAST_API_KEY;
+
+            if (!apiUrl || !apiKey) {
+                console.log('Forecast API config missing, using mock data');
+                return NextResponse.json(await getMockData(type, lat, lng, startDate, endDate));
+            }
+
+            console.log(`Forecast API config: ${apiUrl} ${apiKey}`);
+            headers['ApiKey'] = apiKey;
+
+            // Match Postman example for Forecast API path
+            apiEndpoint = `${apiUrl}/api/Forecast/ShortRangeForecastDaily?latitude=${lat}&longitude=${lng}&startDate=${startDate}&endDate=${endDate}&supplier=Meteoblue&measureLabel=TempAir_DailyMax;TempAir_DailyMin;TempAir_DailyAvg;Precip_DailySum;HumidityRel_DailyAvg;WindSpeed_DailyAvg;GlobalRadiation_DailySum&format=json`;
+        }
+        else if (type === 'historical') {
+            // HISTORICAL API CONFIGURATION
+            apiUrl = process.env.CE_HUB_HISTORICAL_API_URL;
+            apiKey = process.env.CE_HUB_HISTORICAL_API_KEY;
+
+            if (!apiUrl || !apiKey) {
+                console.log('Historical API config missing, using mock data');
+                return NextResponse.json(await getMockData(type, lat, lng, startDate, endDate));
+            }
+
+            console.log(`Historical API config: ${apiUrl} ${apiKey}`);
+
+            // For historical API, key goes in URL
+            apiEndpoint = `${apiUrl}?apikey=${apiKey}`;
+            requestMethod = 'POST';
+
+            // Match Postman example for Historical API
+            requestBody = {
+                units: {
+                    temperature: "C",
+                    velocity: "km/h", // Changed from m/s to match Postman example
+                    length: "metric",
+                    energy: "watts"
+                },
+                geometry: {
+                    type: "MultiPoint", // Changed from Point to match Postman
+                    coordinates: [[parseFloat(lng), parseFloat(lat)]],
+                    locationNames: ["Location"],
+                    mode: "preferLandWithMatchingElevation"
+                },
+                format: "json",
+                timeIntervals: [`${startDate}T+00:00/${endDate}T+00:00`],
+                timeIntervalsAlignment: "none",
+                queries: [
+                    {
+                        domain: "ERA5T", // Matches Postman example
+                        gapFillDomain: "NEMSGLOBAL",
+                        timeResolution: "daily",
+                        codes: [
+                            {
+                                code: 11,
+                                level: "2 m above gnd",
+                                aggregation: "mean"
+                            }
+                        ]
+                    },
+                    {
+                        domain: "ERA5T",
+                        gapFillDomain: "NEMSGLOBAL",
+                        timeResolution: "daily",
+                        codes: [
+                            {
+                                code: 61,
+                                level: "sfc",
+                                aggregation: "sum"
+                            }
+                        ]
+                    }
+                ]
+            };
+        }
+        else if (type === 'soil') {
+            // SOIL API CONFIGURATION
+            apiUrl = process.env.CE_HUB_HISTORICAL_API_URL;
+            apiKey = process.env.CE_HUB_HISTORICAL_API_KEY;
+
+            if (!apiUrl || !apiKey) {
+                console.log('Soil API config missing, using mock data');
+                return NextResponse.json(await getMockData(type, lat, lng, startDate, endDate));
+            }
+
+            console.log(`Soil API config: ${apiUrl} ${apiKey}`);
+
+            // For soil API, key goes in URL
+            apiEndpoint = `${apiUrl}?apikey=${apiKey}`;
+            requestMethod = 'POST';
+
+            // Match Postman example for Soil API exactly
+            requestBody = {
+                units: {
+                    temperature: "C",
+                    velocity: "km/h",
+                    length: "metric",
+                    energy: "watts"
+                },
+                geometry: {
+                    type: "MultiPoint",
+                    coordinates: [[parseFloat(lng), parseFloat(lat)]],
+                    locationNames: ["Location"],
+                    mode: "preferLandWithMatchingElevation"
+                },
+                format: "json",
+                timeIntervals: [`${startDate}T+00:00/${endDate}T+00:00`],
+                timeIntervalsAlignment: "none",
+                queries: [
+                    {
+                        domain: "SOILGRIDS1000", // Critical: Correct domain from Postman
+                        gapFillDomain: null,
+                        timeResolution: "static",
+                        codes: [
+                            { code: 812, level: "5 cm" } // Specific soil code from Postman
+                        ]
+                    },
+                    {
+                        domain: "SOILGRIDS1000",
+                        gapFillDomain: null,
+                        timeResolution: "static",
+                        codes: [
+                            { code: 806, level: "0 cm" } // Specific soil code from Postman
+                        ]
+                    },
+                    {
+                        domain: "WISE30",
+                        gapFillDomain: null,
+                        timeResolution: "static",
+                        codes: [
+                            { code: 831, level: "0-20 cm" } // Additional soil property
+                        ]
+                    }
+                ]
+            };
+        }
+        else {
+            return NextResponse.json(
+                { error: `Unsupported data type: ${type}` },
+                { status: 400 }
+            );
+        }
+
+        // Make request to CE Hub API with enhanced logging
+        console.log(`Making ${requestMethod} request to: ${apiEndpoint.split('?')[0]}`);
+
+        const response = requestMethod === 'GET'
+            ? await fetch(apiEndpoint, { headers })
+            : await fetch(apiEndpoint, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify(requestBody)
+            });
+
+        console.log(`CE Hub API response: ${response.status} ${response.statusText}`);
+
+        // Handle different response statuses appropriately
+        let responseData;
+
+        if (response.status === 204) {
+            // Handle No Content responses
+            console.log('Received 204 No Content response - using empty data set');
+            responseData = { data: [] };
+        }
+        else if (!response.ok) {
+            // Try to get error details for better diagnostics
+            let errorDetails = '';
+            try {
+                const errorText = await response.text();
+                errorDetails = errorText.substring(0, 200);
+                console.error(`API Error response details: ${errorDetails}`);
+            } catch (readError) {
+                console.error('Could not read error response body');
+            }
+
+            // Throw appropriate error based on status code
+            if (response.status === 401 || response.status === 403) {
+                throw new Error(`Authentication failed for CE Hub ${type} API: Invalid API key`);
+            } else if (response.status === 400) {
+                throw new Error(`Invalid request to CE Hub ${type} API: Bad Request - ${errorDetails || 'Check parameters'}`);
+            } else if (response.status === 404) {
+                throw new Error(`Endpoint not found for CE Hub ${type} API: Check URL configuration`);
+            } else {
+                throw new Error(`CE Hub API responded with ${response.status}: ${response.statusText}`);
+            }
+        }
+        else {
+            // Process successful responses
+            try {
+                const contentType = response.headers.get('content-type');
+                if (contentType && contentType.includes('application/json')) {
+                    responseData = await response.json();
+                } else {
+                    console.log(`Non-JSON response received: ${contentType}`);
+                    const textResponse = await response.text();
+                    console.log(`Response preview: ${textResponse.substring(0, 100)}...`);
+                    responseData = { data: [] };
+                }
+            } catch (parseError) {
+                console.error('Error parsing response:', parseError);
+                responseData = { data: [] };
+            }
+        }
+
+        // Process the data based on the type
+        const processedData = processApiResponse(type, responseData);
+        console.log(`Successfully processed ${type} data`);
+
+        return NextResponse.json(processedData);
+    } catch (error) {
+        console.error('Error fetching environmental data:', error);
+
+        // Return mock data if API request fails
+        const mockData = await getMockData(type, lat, lng, startDate, endDate);
+        return NextResponse.json(mockData);
+    }
+}
+
+/**
+ * Process the API response based on the type of data requested
+ */
+function processApiResponse(type: string, responseData: any) {
+    // First check if we have valid data to process
+    const hasValidData = responseData &&
+        responseData.data &&
+        Array.isArray(responseData.data) &&
+        responseData.data.length > 0;
+
+    if (!hasValidData) {
+        console.log(`API returned empty or invalid data for ${type}, using mock data instead`);
+        // Generate mock data based on type
+        return getMockDataSync(type);
+    }
+
+    switch (type) {
+        case 'forecast':
+            // Extract and format forecast data from the response
+            const dailyData = responseData.data.map((item: any) => ({
+                date: item.date || new Date().toISOString().split('T')[0],
+                temperature: {
+                    max: item.TempAir_DailyMax ?? (20 + Math.random() * 10),
+                    min: item.TempAir_DailyMin ?? (10 + Math.random() * 5),
+                    avg: item.TempAir_DailyAvg ?? (15 + Math.random() * 7)
+                },
+                precipitation: item.Precip_DailySum ?? (Math.random() > 0.7 ? Math.random() * 10 : 0),
+                humidity: item.HumidityRel_DailyAvg ?? (50 + Math.random() * 30),
+                windSpeed: item.WindSpeed_DailyAvg ?? (2 + Math.random() * 6),
+                globalRadiation: item.GlobalRadiation_DailySum ?? (5000 + Math.random() * 3000)
+            }));
+
+            // If mapped data is empty, fall back to mock
+            if (dailyData.length === 0) {
+                console.log('Mapped forecast data is empty, using mock data');
+                return getMockDataSync('forecast');
+            }
+
+            return {
+                forecast: {
+                    daily: dailyData
+                }
+            };
+
+        case 'historical':
+        // [Similar implementation for historical data]
+        // ...
+
+        case 'soil':
+        // [Similar implementation for soil data]
+        // ...
+
+        default:
+            return responseData;
+    }
+}
+
+/**
+ * Synchronous version of getMockData for use within processApiResponse
+ */
+function getMockDataSync(type: string): any {
+    const today = new Date();
+    const startDate = today.toISOString().split('T')[0];
+    const endDate = new Date(today.setDate(today.getDate() + 7)).toISOString().split('T')[0];
+
+    switch (type) {
+        case 'forecast':
+            return generateMockForecast(startDate, endDate);
+        case 'historical':
+            return generateMockHistorical(startDate, endDate);
+        case 'soil':
+            // Use a default location when no coordinates are available
+            return generateMockSoil('15', '75');
+        default:
+            return { error: "Unknown data type requested" };
+    }
+}
+
+/**
+ * Helper to get the first data value from a dataset
+ */
+/**
+ * Helper to get the first data value from a dataset
+ */
+function getFirstDataValue(dataset: any): number | null {
+    if (!dataset) {
+        console.warn('Dataset not found in response, using randomized mock value');
+        // Return a reasonable mock value instead of null
+        return Math.random() * 10;
+    }
+
+    if (!dataset.data || !dataset.data.length) {
+        console.warn(`Dataset ${dataset?.domain || 'unknown'}/${dataset?.code || 'unknown'} has no data points, using randomized mock value`);
+        return Math.random() * 10;
+    }
+
+    // Handle the case where value might be null or not a number
+    const value = dataset.data[0].value;
+    if (value === null || value === undefined || typeof value !== 'number') {
+        console.warn(`Invalid value type in dataset ${dataset.domain}/${dataset.code}, using randomized mock value`);
+        return Math.random() * 10;
+    }
+
+    return value;
+}
+
+/**
+ * Get the soil texture description based on the value
+ */
+function getSoilTextureDescription(textureValue: number | null): string {
+    if (textureValue === null) return "Unknown";
+
+    // Soil texture classification mapping
+    const textureClassMap: { [key: number]: string } = {
+        1: "Clay (Cl)",
+        2: "Silty Clay (SiCl)",
+        3: "Sandy Clay (SaCl)",
+        4: "Clay Loam (ClLo)",
+        5: "Silty Clay Loam (SiClLo)",
+        6: "Sandy Clay Loam (SaClLo)",
+        7: "Loam (Lo)",
+        8: "Silty Loam (SiLo)",
+        9: "Sandy Loam (SaLo)",
+        10: "Silt (Si)",
+        11: "Loamy Sand (LoSa)",
+        12: "Sand (Sa)"
+    };
+
+    return textureClassMap[textureValue] || "Unknown";
+}
+
+/**
+ * Get mock data for development and testing
+ */
+async function getMockData(type: string, lat: string, lng: string, startDate: string, endDate: string): Promise<any> {
+    // Generate realistic mock data based on type and params
+    switch (type) {
+        case 'forecast':
+            return generateMockForecast(startDate, endDate);
+        case 'historical':
+            return generateMockHistorical(startDate, endDate);
+        case 'soil':
+            return generateMockSoil(lat, lng);
+        default:
+            return { error: "Unknown data type requested" };
+    }
+}
+
+/**
+ * Generate mock forecast data
+ */
+function generateMockForecast(startDate: string, endDate: string) {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const days = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+
+    const dailyData = [];
+
+    for (let i = 0; i < days; i++) {
+        const currentDate = new Date(start);
+        currentDate.setDate(start.getDate() + i);
+
+        // Generate somewhat realistic weather data with some variability
+        const baseTemp = 25 + Math.sin(i / 3) * 5; // Oscillating temperature pattern
+
+        dailyData.push({
+            date: currentDate.toISOString().split('T')[0],
+            temperature: {
+                max: baseTemp + Math.random() * 3,
+                min: baseTemp - 10 + Math.random() * 3,
+                avg: baseTemp - 5 + Math.random() * 2
+            },
+            precipitation: Math.random() > 0.7 ? Math.random() * 10 : 0, // 30% chance of rain
+            humidity: 50 + Math.random() * 30,
+            windSpeed: 2 + Math.random() * 6,
+            globalRadiation: 5000 + Math.random() * 3000
+        });
+    }
+
+    return {
+        forecast: {
+            daily: dailyData
+        }
+    };
+}
+
+/**
+ * Generate mock historical data
+ */
+function generateMockHistorical(startDate: string, endDate: string) {
+    // Simple mock historical data
+    return {
+        historical: {
+            temperature: {
+                avg: 24.5,
+                max: 35.2,
+                min: 15.1
+            },
+            precipitation: {
+                annual: 850,
+                monthly: [45, 60, 75, 90, 120, 65, 45, 35, 70, 95, 85, 65]
+            }
+        }
+    };
+}
+
+/**
+ * Generate mock soil data
+ */
+function generateMockSoil(lat: string, lng: string) {
+    // Generate mock soil data based on coordinates
+    // This is very simplified - real soil data would be much more complex
+    const latNum = parseFloat(lat);
+    const lngNum = parseFloat(lng);
+
+    // Use coordinates to deterministically generate different soil types
+    // This creates a simple pattern across different locations
+    const soilTextureIndex = Math.floor((Math.abs(latNum * 10) + Math.abs(lngNum * 10)) % 12) + 1;
+
+    const soilTextureMap: { [key: number]: string } = {
+        1: "Clay (Cl)",
+        2: "Silty Clay (SiCl)",
+        3: "Sandy Clay (SaCl)",
+        4: "Clay Loam (ClLo)",
+        5: "Silty Clay Loam (SiClLo)",
+        6: "Sandy Clay Loam (SaClLo)",
+        7: "Loam (Lo)",
+        8: "Silty Loam (SiLo)",
+        9: "Sandy Loam (SaLo)",
+        10: "Silt (Si)",
+        11: "Loamy Sand (LoSa)",
+        12: "Sand (Sa)"
+    };
+
+    return {
+        soil: {
+            texture: soilTextureMap[soilTextureIndex],
+            properties: {
+                bulkDensity: 1.2 + Math.random() * 0.4,
+                organicMatter: 1 + Math.random() * 3,
+                ph: 5.5 + Math.random() * 2.5,
+                waterHoldingCapacity: 0.1 + Math.random() * 0.2,
+                cationExchangeCapacity: 5 + Math.random() * 15
+            }
+        }
+    };
+}
+</file>
+
+<file path="components/farm/CropSelector.tsx">
+"use client";
+
+import React, { useState } from 'react';
+import { Crop, CropType } from '@/types/farm';
+import { Button } from '@/components/ui/Button';
+
+interface CropSelectorProps {
+    crops: Crop[];
+    onChange: (crops: Crop[]) => void;
+    totalFarmSize: number;
+    className?: string;
+}
+
+// Crop type options with metadata
+const cropOptions: Array<{
+    value: CropType;
+    label: string;
+    description: string;
+    icon: string;
+}> = [
+        {
+            value: 'rice',
+            label: 'Rice',
+            description: 'Thrives in warm, wet conditions with high rainfall',
+            icon: '🌾',
+        },
+        {
+            value: 'wheat',
+            label: 'Wheat',
+            description: 'Adaptable to various climates, requires moderate rainfall',
+            icon: '🌿',
+        },
+        {
+            value: 'corn',
+            label: 'Corn',
+            description: 'Needs warm soil and plenty of sunshine',
+            icon: '🌽',
+        },
+        {
+            value: 'soybean',
+            label: 'Soybean',
+            description: 'Fixes nitrogen, grows well in warm climates',
+            icon: '🌱',
+        },
+        {
+            value: 'cotton',
+            label: 'Cotton',
+            description: 'Requires long, frost-free periods and plenty of sunshine',
+            icon: '🧶',
+        },
+        {
+            value: 'vegetable',
+            label: 'Vegetables',
+            description: 'Various vegetable crops with different requirements',
+            icon: '🥦',
+        },
+        {
+            value: 'fruit',
+            label: 'Fruit',
+            description: 'Tree and shrub fruits typically requiring good drainage',
+            icon: '🍎',
+        },
+    ];
+
+export default function CropSelector({
+    crops,
+    onChange,
+    totalFarmSize,
+    className = '',
+}: CropSelectorProps) {
+    const [validationError, setValidationError] = useState<string | null>(null);
+
+    // Calculate total acreage currently allocated
+    const allocatedAcreage = crops.reduce((sum, crop) => sum + crop.acreage, 0);
+    const remainingAcreage = totalFarmSize - allocatedAcreage;
+
+    // Function to add a new crop
+    const handleAddCrop = () => {
+        // Default to first available crop type not yet selected
+        const usedCropTypes = crops.map(crop => crop.type);
+        const availableCropType = cropOptions.find(
+            option => !usedCropTypes.includes(option.value)
+        )?.value || cropOptions[0].value;
+
+        const newCrop: Crop = {
+            id: `crop_${Date.now()}`,
+            name: `New ${cropOptions.find(c => c.value === availableCropType)?.label || 'Crop'}`,
+            type: availableCropType,
+            acreage: Math.min(1, remainingAcreage) // Use remaining acreage or 1, whichever is smaller
+        };
+
+        if (remainingAcreage <= 0) {
+            setValidationError('Cannot add more crops. Increase farm size or reduce other crop acreages.');
+            return;
+        }
+
+        onChange([...crops, newCrop]);
+        setValidationError(null);
+    };
+
+    // Function to remove a crop
+    const handleRemoveCrop = (cropId: string) => {
+        onChange(crops.filter(crop => crop.id !== cropId));
+        setValidationError(null);
+    };
+
+    // Function to update a crop
+    const handleCropChange = (index: number, updatedCrop: Partial<Crop>) => {
+        const newCrops = [...crops];
+        newCrops[index] = { ...newCrops[index], ...updatedCrop };
+
+        // Validate acreage
+        const totalAcreage = newCrops.reduce((sum, crop) => sum + crop.acreage, 0);
+        if (totalAcreage > totalFarmSize) {
+            setValidationError(`Total acreage (${totalAcreage}) exceeds farm size (${totalFarmSize})`);
+            // Still update the state, but with the validation error
+        } else {
+            setValidationError(null);
+        }
+
+        onChange(newCrops);
+    };
+
+    return (
+        <div className={`space-y-4 ${className}`}>
+            <div className="flex justify-between items-center">
+                <h3 className="text-lg font-medium">Crops ({crops.length})</h3>
+                <div className="text-sm text-gray-500">
+                    Acreage: {allocatedAcreage} / {totalFarmSize}
+                    ({remainingAcreage >= 0 ? `${remainingAcreage} available` : `${Math.abs(remainingAcreage)} over limit`})
+                </div>
+            </div>
+
+            {validationError && (
+                <div className="p-3 bg-red-50 border border-red-200 text-red-600 rounded-md text-sm">
+                    {validationError}
+                </div>
+            )}
+
+            <div className="space-y-3">
+                {crops.map((crop, index) => (
+                    <div
+                        key={crop.id}
+                        className="p-4 border rounded-lg bg-white shadow-sm flex flex-col sm:flex-row gap-4"
+                    >
+                        <div className="flex-1 space-y-4">
+                            <div>
+                                <label htmlFor={`crop-type-${index}`} className="block text-sm font-medium text-gray-700 mb-1">
+                                    Crop Type
+                                </label>
+                                <select
+                                    id={`crop-type-${index}`}
+                                    value={crop.type}
+                                    onChange={(e) => handleCropChange(index, { type: e.target.value as CropType })}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500"
+                                >
+                                    {cropOptions.map(option => (
+                                        <option key={option.value} value={option.value}>
+                                            {option.icon} {option.label}
+                                        </option>
+                                    ))}
+                                </select>
+                                <p className="mt-1 text-xs text-gray-500">
+                                    {cropOptions.find(c => c.value === crop.type)?.description}
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="flex flex-row sm:flex-col justify-between items-center sm:items-end space-y-0 sm:space-y-4">
+                            <div className="w-full max-w-[120px]">
+                                <label htmlFor={`crop-acreage-${index}`} className="block text-sm font-medium text-gray-700 mb-1">
+                                    Acreage
+                                </label>
+                                <input
+                                    id={`crop-acreage-${index}`}
+                                    type="number"
+                                    min="0.1"
+                                    step="0.1"
+                                    value={crop.acreage}
+                                    onChange={(e) => handleCropChange(index, { acreage: parseFloat(e.target.value) || 0 })}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500"
+                                />
+                            </div>
+
+                            <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => handleRemoveCrop(crop.id)}
+                                className="mt-4 sm:mt-0"
+                                aria-label={`Remove ${crop.name}`}
+                            >
+                                Remove
+                            </Button>
+                        </div>
+                    </div>
+                ))}
+            </div>
+
+            <Button
+                variant="outline"
+                onClick={handleAddCrop}
+                disabled={remainingAcreage <= 0}
+                className="w-full"
+            >
+                + Add Crop
+            </Button>
+
+            {crops.length === 0 && (
+                <div className="text-center p-8 border border-dashed rounded-lg">
+                    <p className="text-gray-500">No crops added yet. Click the button above to add your first crop.</p>
+                </div>
+            )}
+        </div>
+    );
+}
+</file>
+
+<file path="components/farm/FarmSetupWizard.tsx">
+"use client";
+
+import React, { useState } from 'react';
+import { FarmData, Crop, GeoLocation } from '@/types/farm';
+import { Card } from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
+import LocationPicker from '@/components/farm/LocationPicker';
+import CropSelector from '@/components/farm/CropSelector';
+import { useFarmData } from '@/lib/hooks/useFarmData';
+import { useRouter } from 'next/navigation';
+
+// Define the steps in our wizard - reduced to 3 substantive steps plus completion
+enum SetupStep {
+  LOCATION = 0,
+  FARM_INFO = 1,
+  CROPS = 2,
+  COMPLETE = 3  // Now the 4th state (index 3) instead of 5th
+}
+
+interface StepIndicatorProps {
+  currentStep: SetupStep;
+  totalSteps: number;
+}
+
+// A simple step indicator component
+function StepIndicator({ currentStep, totalSteps }: StepIndicatorProps) {
+  return (
+    <div className="flex items-center justify-center mb-8">
+      {Array.from({ length: totalSteps }).map((_, index) => (
+        <React.Fragment key={index}>
+          <div 
+            className={`w-8 h-8 rounded-full flex items-center justify-center
+              ${index <= currentStep ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-600'}`}
+          >
+            {index + 1}
+          </div>
+          {index < totalSteps - 1 && (
+            <div 
+              className={`h-1 w-12 mx-1 
+              ${index < currentStep ? 'bg-green-600' : 'bg-gray-200'}`}
+            />
+          )}
+        </React.Fragment>
+      ))}
+    </div>
+  );
+}
+
+export default function FarmSetupWizard() {
+  const [currentStep, setCurrentStep] = useState<SetupStep>(SetupStep.LOCATION);
+  const [showEnvironmentalData, setShowEnvironmentalData] = useState(false);
+  const router = useRouter();
+  
+  const {
+    farmData,
+    isLoading,
+    updateFarmName,
+    updateFarmLocation,
+    updateFarmSize,
+    updateFarmCrops,
+    saveFarm,
+    error
+  } = useFarmData();
+
+  // Handle location selection and move to next step
+  const handleLocationSelected = () => {
+    if (farmData.location.lat !== 0 && farmData.location.lng !== 0) {
+      setShowEnvironmentalData(true);
+      setCurrentStep(SetupStep.FARM_INFO);
+    }
+  };
+
+  // Handle farm info update and move to next step
+  const handleFarmInfoSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setCurrentStep(SetupStep.CROPS);
+  };
+  
+  // Handle crops setup and move directly to completion (skipping analysis)
+  const handleCropsSubmit = () => {
+    // Save farm data and proceed to completion
+    saveFarm();
+    setCurrentStep(SetupStep.COMPLETE);
+    
+    // Navigate to simulation after a brief delay
+    setTimeout(() => {
+      router.push('/simulation');
+    }, 1000);
+  };
+
+  // Go back to previous step
+  const handleBack = () => {
+    if (currentStep > 0) {
+      setCurrentStep(currentStep - 1);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <Card className="p-6 max-w-3xl mx-auto">
+        <div className="text-center py-12">
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-green-500 mb-4"></div>
+          <p>Loading farm data...</p>
+        </div>
+      </Card>
+    );
+  }
+
+  // For step 1: Location Selection
+  if (currentStep === SetupStep.LOCATION) {
+    return (
+      <Card className="p-6 max-w-3xl mx-auto">
+        <StepIndicator currentStep={currentStep} totalSteps={3} />
+        <h2 className="text-2xl font-bold mb-6 text-center">Where is your farm located?</h2>
+        <p className="text-gray-600 mb-6 text-center">
+          Select your farm's location to get accurate environmental data and recommendations
+        </p>
+        
+        <div className="space-y-6">
+          <LocationPicker
+            value={farmData.location}
+            onChange={updateFarmLocation}
+            className="w-full"
+          />
+          
+          <div className="flex justify-end mt-6">
+            <Button
+              variant="primary"
+              size="lg"
+              onClick={handleLocationSelected}
+              disabled={farmData.location.lat === 0 || farmData.location.lng === 0}
+            >
+              Continue
+            </Button>
+          </div>
+        </div>
+      </Card>
+    );
+  }
+
+  // For step 2: Farm Information
+  if (currentStep === SetupStep.FARM_INFO) {
+    return (
+      <Card className="p-6 max-w-3xl mx-auto">
+        <StepIndicator currentStep={currentStep} totalSteps={3} />
+        <h2 className="text-2xl font-bold mb-6 text-center">Tell us about your farm</h2>
+        
+        <form onSubmit={handleFarmInfoSubmit} className="space-y-6">
+          <div>
+            <label htmlFor="acreage" className="block text-sm font-medium text-gray-700 mb-1">
+              Total Farm Size (acres)
+            </label>
+            <input
+              type="number"
+              id="acreage"
+              value={farmData.totalAcreage}
+              onChange={(e) => updateFarmSize(parseFloat(e.target.value))}
+              min="1"
+              step="0.1"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500"
+              required
+            />
+          </div>
+
+          <div className="flex justify-between mt-6">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleBack}
+            >
+              Back
+            </Button>
+            <Button
+              type="submit"
+              variant="primary"
+              size="lg"
+            >
+              Continue
+            </Button>
+          </div>
+        </form>
+      </Card>
+    );
+  }
+
+  // For step 3: Crop Selection - now leads directly to completion
+  if (currentStep === SetupStep.CROPS) {
+    return (
+      <Card className="p-6 max-w-3xl mx-auto">
+        <StepIndicator currentStep={currentStep} totalSteps={3} />
+        <h2 className="text-2xl font-bold mb-6 text-center">What crops do you grow?</h2>
+        <p className="text-gray-600 mb-6 text-center">
+          Add the crops you're growing and their approximate acreage
+        </p>
+        
+        <div className="space-y-6">
+          <CropSelector
+            crops={farmData.crops}
+            onChange={updateFarmCrops}
+            totalFarmSize={farmData.totalAcreage}
+          />
+          
+          {error && (
+            <div className="p-3 bg-red-50 border border-red-200 text-red-600 rounded-md text-sm">
+              {error}
+            </div>
+          )}
+          
+          <div className="flex justify-between mt-6">
+            <Button
+              variant="outline"
+              onClick={handleBack}
+            >
+              Back
+            </Button>
+            <Button
+              variant="primary"
+              size="lg"
+              onClick={handleCropsSubmit}
+              disabled={farmData.crops.length === 0 || !!error}
+            >
+              Start Simulation
+            </Button>
+          </div>
+        </div>
+      </Card>
+    );
+  }
+
+  // For completion step
+  if (currentStep === SetupStep.COMPLETE) {
+    return (
+      <Card className="p-6 max-w-3xl mx-auto">
+        <div className="text-center py-12">
+          <div className="inline-block text-green-500 text-5xl mb-4">✓</div>
+          <h2 className="text-2xl font-bold mb-4">Setup Complete!</h2>
+          <p className="text-gray-600 mb-8">Redirecting to the simulation...</p>
+          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-green-500 mx-auto"></div>
+        </div>
+      </Card>
+    );
+  }
+
+  // Default fallback (shouldn't reach here)
+  return null;
+}
+</file>
+
+<file path="components/ui/HeroSection.tsx">
+"use client";
+
+import React from 'react';
+import Image from 'next/image';
+import Navbar from './Navbar';
+
+interface HeroSectionProps {
+    onGetStarted: () => void;
+}
+
+export default function HeroSection({ onGetStarted }: HeroSectionProps) {
+    return (
+        <>
+            {/* Full viewport background container */}
+            <div className="fixed inset-0 z-0">
+                <Image
+                    src="/images/farm-hero.png"
+                    alt="Sustainable farming landscape"
+                    fill
+                    priority
+                    className="object-cover"
+                />
+                {/* Gradient overlay for text readability */}
+                <div className="absolute inset-0 bg-black/20"></div>
+            </div>
+
+            {/* Header bar - positioned absolutely to maintain its position */}
+            <Navbar />
+
+            {/* Main content container - positioned absolutely to maintain layout */}
+            <div className="fixed inset-0 z-5 flex items-center justify-center pt-16">
+                <div className="text-center px-4 py-8 max-w-3xl mx-auto">
+                    <h1 className="text-5xl font-bold text-white mb-6">
+                        Nature helps nature
+                    </h1>
+                    <h2 className="text-2xl md:text-3xl text-white mb-8">
+                        Use AI to improve global farming through nature-powered innovation
+                    </h2>
+
+                    <div className="backdrop-blur-sm bg-white/10 rounded-xl p-6 mb-10 border border-white/20">
+                        <p className="text-lg text-white mb-8">
+                            Our AI-powered Farm Bio-Boost Simulator helps you visualize environmental risks,
+                            recommend biological products for your specific crops, and track outcomes to
+                            improve yields sustainably.
+                        </p>
+
+                        {/* Get Started button */}
+                        <button
+                            onClick={onGetStarted}
+                            className="inline-flex items-center bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-8 rounded-full transition-all shadow-lg"
+                        >
+                            Get Started
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-2" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L12.586 11H5a1 1 0 110-2h7.586l-2.293-2.293a1 1 0 010-1.414z" clipRule="evenodd" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </>
+    );
+}
+</file>
+
+<file path="package.json">
+{
+  "name": "start-hack",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --turbopack",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "leaflet": "^1.9.4",
+    "next": "15.2.3",
+    "react": "19.0.0-rc.1",
+    "react-dom": "19.0.0-rc.1",
+    "react-leaflet": "5.0.0-rc.2",
+    "three": "^0.152.2",
+    "@react-three/fiber": "^8.13.3",
+    "@react-three/drei": "^9.77.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/leaflet": "^1.9.16",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@types/three": "^0.152.1",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}
+</file>
+
+<file path="app/globals.css">
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+}
+
+button,
+a, select {
+  cursor: pointer;
+}
+
+@layer base {
+  h1 {
+    @apply text-3xl font-bold;
+  }
+  h2 {
+    @apply text-2xl font-bold;
+  }
+  h3 {
+    @apply text-xl font-bold;
+  }
+}
+
+@keyframes shine {
+  from {
+    left: -100%;
+  }
+  to {
+    left: 200%;
+  }
+}
+
+.animate-shine {
+  animation: shine 1.5s ease-in-out infinite;
+}
+
+main {
+  background-image: src("images/farm-hero.jpg");
+}
+
+@keyframes grow {
+  0% {
+    transform: scale(0.1);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes sway {
+  0% {
+    transform: rotate(0deg);
+  }
+  25% {
+    transform: rotate(2deg);
+  }
+  75% {
+    transform: rotate(-2deg);
+  }
+  100% {
+    transform: rotate(0deg);
+  }
+}
+
+@keyframes fall {
+  0% {
+    transform: translateY(-10px);
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(100px);
+    opacity: 0;
+  }
+}
+
+@keyframes float {
+  0% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+  100% {
+    transform: translateY(0px);
+  }
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.crop-seedling {
+  animation: grow 2s ease-out forwards;
+}
+
+.crop-growing {
+  animation: sway 4s ease-in-out infinite;
+}
+
+.crop-mature {
+  animation: sway 6s ease-in-out infinite;
+}
+
+.crop-harvesting {
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.weather-rain {
+  animation: fall 1.5s linear infinite;
+}
+
+.notification {
+  animation: float 2s ease-in-out;
+}
+</file>
+
+<file path="app/layout.tsx">
+import type { Metadata } from 'next';
+import { Inter } from 'next/font/google';
+import './globals.css';
+import Navbar from '@/components/ui/Navbar';
+
+const inter = Inter({ subsets: ['latin'] });
+
+export const metadata: Metadata = {
+    title: 'Farm Bio-Boost Simulator',
+    description: 'Simulate the effects of biological products on crop performance',
+};
+
+export default function RootLayout({
+    children,
+}: {
+    children: React.ReactNode;
+}) {
+    return (
+        <html lang="en">
+            <body className={`${inter.className} bg-gray-50 min-h-screen`}>
+                <Navbar />
+                <main className="container mx-auto">{children}</main>
+            </body>
+        </html>
+    );
+}
+</file>
+
+<file path="app/page.tsx">
+"use client";
+
+import React, { useState } from 'react';
+import Link from 'next/link';
+import { Button } from '@/components/ui/Button';
+import HeroSection from '@/components/ui/HeroSection';
+import FarmSetupWizard from '@/components/farm/FarmSetupWizard';
+import Image from 'next/image';
+
+export default function HomePage() {
+    const [showWizard, setShowWizard] = useState(false);
+
+    const handleGetStarted = () => {
+        setShowWizard(true);
+        // Smooth scroll to the wizard section
+        setTimeout(() => {
+            document.getElementById('setup-wizard')?.scrollIntoView({ 
+                behavior: 'smooth' 
+            });
+        }, 100);
+    };
+
+    return (
+        <div className="relative min-h-screen">
+            {/* Persistent Background Container */}
+            <div className="fixed inset-0 z-0">
+                <Image
+                    src="/images/farm-hero.jpg"
+                    alt="Sustainable farming landscape"
+                    fill
+                    priority
+                    className="object-cover"
+                />
+                {/* Gradient overlay for text readability */}
+                <div className="absolute inset-0 bg-black/40"></div>
+            </div>
+
+            {/* Header Bar */}
+            <div className="fixed top-0 left-0 right-0 z-10 bg-green-500 py-3 px-4">
+                <div className="container mx-auto max-w-5xl flex justify-between items-center">
+                    <div className="flex items-center">
+                        <span className="text-white font-bold text-xl">Farm Bio-Boost</span>
+                        <span className="text-white ml-2">Simulator</span>
+                    </div>
+                {/* Powered by Syngenta */}
+                <div className="flex items-center text-sm text-gray-600">
+                    <span className="mr-2">Powered by</span>
+                    <Image
+                        src="/images/syngenta-logo.png"
+                        alt="Syngenta"
+                        width={100}
+                        height={30}
+                        className="w-auto"
+                    />
+                </div>
+                </div>
+            </div>
+
+            {/* Content Container */}
+            <div className="relative z-5 pt-16 min-h-screen">
+                <div className="container mx-auto max-w-5xl">
+                    {/* Show the hero section if we're not in wizard mode */}
+                    {!showWizard && (
+                        <div className="flex items-center justify-center min-h-[calc(100vh-4rem)]">
+                            <HeroSection onGetStarted={handleGetStarted} />
+                        </div>
+                    )}
+
+                    {/* Show the wizard when the user clicks "Get Started" */}
+                    {showWizard && (
+                        <div id="setup-wizard" className="pt-4 pb-12">
+                            <FarmSetupWizard />
+                            
+                            <div className="text-center mt-8">
+                                <button 
+                                    onClick={() => setShowWizard(false)}
+                                    className="text-white hover:text-gray-200 text-sm underline"
+                                >
+                                    Return to home page
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
 }
 </file>
 

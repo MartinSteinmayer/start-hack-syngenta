@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 // Import mock products data
-import mockProductsData from '@/public/data/mock-products.json';
+import mockProductsData from '@/lib/data/products.json';
 
 export async function GET(request: NextRequest) {
     try {
