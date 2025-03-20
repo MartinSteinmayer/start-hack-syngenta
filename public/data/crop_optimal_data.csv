@@ -1,0 +1,6 @@
+Crop_Name,GDD_Optimal,Precipitation_Optimal,pH_Optimal,N_Optimal
+soybean,2700,575,6.4,0.013
+corn,2900,650,6.4,0.1155
+cotton,2400,1000,6.25,0.0715
+rice,2250,1250,6,0.077
+wheat,2250,1250,6,0.077
