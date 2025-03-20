@@ -6,18 +6,15 @@ import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import LocationPicker from '@/components/farm/LocationPicker';
 import CropSelector from '@/components/farm/CropSelector';
-import EnvironmentalDataDisplay from '@/components/farm/EnvironmentalDataDisplay';
-import CropStressAnalysis from '@/components/farm/CropStressAnalysis';
 import { useFarmData } from '@/lib/hooks/useFarmData';
 import { useRouter } from 'next/navigation';
 
-// Define the steps in our wizard
+// Define the steps in our wizard - reduced to 3 substantive steps plus completion
 enum SetupStep {
   LOCATION = 0,
   FARM_INFO = 1,
   CROPS = 2,
-  ANALYSIS = 3,
-  COMPLETE = 4
+  COMPLETE = 3  // Now the 4th state (index 3) instead of 5th
 }
 
 interface StepIndicatorProps {
@@ -79,15 +76,12 @@ export default function FarmSetupWizard() {
     setCurrentStep(SetupStep.CROPS);
   };
   
-  // Handle crops setup and move to analysis
+  // Handle crops setup and move directly to completion (skipping analysis)
   const handleCropsSubmit = () => {
-    setCurrentStep(SetupStep.ANALYSIS);
-  };
-  
-  // Complete setup and navigate to simulation
-  const handleComplete = () => {
+    // Save farm data and proceed to completion
     saveFarm();
     setCurrentStep(SetupStep.COMPLETE);
+    
     // Navigate to simulation after a brief delay
     setTimeout(() => {
       router.push('/simulation');
@@ -116,7 +110,7 @@ export default function FarmSetupWizard() {
   if (currentStep === SetupStep.LOCATION) {
     return (
       <Card className="p-6 max-w-3xl mx-auto">
-        <StepIndicator currentStep={currentStep} totalSteps={4} />
+        <StepIndicator currentStep={currentStep} totalSteps={3} />
         <h2 className="text-2xl font-bold mb-6 text-center">Where is your farm located?</h2>
         <p className="text-gray-600 mb-6 text-center">
           Select your farm's location to get accurate environmental data and recommendations
@@ -148,7 +142,7 @@ export default function FarmSetupWizard() {
   if (currentStep === SetupStep.FARM_INFO) {
     return (
       <Card className="p-6 max-w-3xl mx-auto">
-        <StepIndicator currentStep={currentStep} totalSteps={4} />
+        <StepIndicator currentStep={currentStep} totalSteps={3} />
         <h2 className="text-2xl font-bold mb-6 text-center">Tell us about your farm</h2>
         
         <form onSubmit={handleFarmInfoSubmit} className="space-y-6">
@@ -189,11 +183,11 @@ export default function FarmSetupWizard() {
     );
   }
 
-  // For step 3: Crop Selection
+  // For step 3: Crop Selection - now leads directly to completion
   if (currentStep === SetupStep.CROPS) {
     return (
       <Card className="p-6 max-w-3xl mx-auto">
-        <StepIndicator currentStep={currentStep} totalSteps={4} />
+        <StepIndicator currentStep={currentStep} totalSteps={3} />
         <h2 className="text-2xl font-bold mb-6 text-center">What crops do you grow?</h2>
         <p className="text-gray-600 mb-6 text-center">
           Add the crops you're growing and their approximate acreage
@@ -225,45 +219,6 @@ export default function FarmSetupWizard() {
               onClick={handleCropsSubmit}
               disabled={farmData.crops.length === 0 || !!error}
             >
-              Continue
-            </Button>
-          </div>
-        </div>
-      </Card>
-    );
-  }
-
-  // For step 4: Analysis & Complete
-  if (currentStep === SetupStep.ANALYSIS) {
-    return (
-      <Card className="p-6 max-w-3xl mx-auto">
-        <StepIndicator currentStep={currentStep} totalSteps={4} />
-        <h2 className="text-2xl font-bold mb-6 text-center">Crop Analysis</h2>
-        <p className="text-gray-600 mb-6 text-center">
-          Review the analysis of environmental conditions for your crops
-        </p>
-        
-        <div className="space-y-6">
-          {farmData.crops.length > 0 && showEnvironmentalData && (
-            <CropStressAnalysis
-              crops={farmData.crops}
-              location={farmData.location}
-              className="mt-4"
-            />
-          )}
-          
-          <div className="flex justify-between mt-6">
-            <Button
-              variant="outline"
-              onClick={handleBack}
-            >
-              Back
-            </Button>
-            <Button
-              variant="primary"
-              size="lg"
-              onClick={handleComplete}
-            >
               Start Simulation
             </Button>
           </div>
@@ -272,7 +227,7 @@ export default function FarmSetupWizard() {
     );
   }
 
-  // For step 5: Complete
+  // For completion step
   if (currentStep === SetupStep.COMPLETE) {
     return (
       <Card className="p-6 max-w-3xl mx-auto">
