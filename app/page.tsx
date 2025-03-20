@@ -1,48 +1,47 @@
+"use client";
+
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
-import { Card } from '@/components/ui/Card';
-import FarmSetup from '@/components/farm/FarmSetup';
+import HeroSection from '@/components/ui/HeroSection';
+import FarmSetupWizard from '@/components/farm/FarmSetupWizard';
+import Image from 'next/image';
 
 export default function HomePage() {
+    const [showWizard, setShowWizard] = useState(false);
+
+    const handleGetStarted = () => {
+        setShowWizard(true);
+        // Smooth scroll to the wizard section
+        setTimeout(() => {
+            document.getElementById('setup-wizard')?.scrollIntoView({ 
+                behavior: 'smooth' 
+            });
+        }, 100);
+    };
+
     return (
         <div className="max-w-5xl mx-auto">
-            <section className="mb-12 text-center">
-                <h2 className="text-3xl font-bold mb-4">
-                    Welcome to the Farm Bio-Boost Simulator
-                </h2>
-                <p className="text-xl text-gray-600 mb-8">
-                    Test the effects of biological products on your farm before applying them in real life
-                </p>
-                <div className="flex justify-center gap-6">
-                    <Card className="max-w-md p-6 bg-white rounded-lg shadow-lg">
-                        <h3 className="text-xl font-semibold mb-4">
-                            Benefits of biological products:
-                        </h3>
-                        <ul className="list-disc pl-5 space-y-2 text-left mb-6">
-                            <li>Improve crop resilience to environmental stresses</li>
-                            <li>Enhance nutrient uptake efficiency</li>
-                            <li>Boost overall yield and quality</li>
-                            <li>Support sustainable farming practices</li>
-                        </ul>
-                    </Card>
+            {/* Show the hero section if we're not in wizard mode */}
+            {!showWizard && (
+                <HeroSection onGetStarted={handleGetStarted} />
+            )}
+
+            {/* Show the wizard when the user clicks "Get Started" */}
+            {showWizard && (
+                <div id="setup-wizard" className="pt-4 pb-12">
+                    <FarmSetupWizard />
+                    
+                    <div className="text-center mt-8">
+                        <button 
+                            onClick={() => setShowWizard(false)}
+                            className="text-gray-500 hover:text-gray-700 text-sm underline"
+                        >
+                            Return to home page
+                        </button>
+                    </div>
                 </div>
-            </section>
-
-            <section className="mb-12">
-                <h2 className="text-2xl font-bold mb-6 text-center">Set Up Your Farm</h2>
-                <FarmSetup />
-            </section>
-
-            <section className="text-center">
-                <p className="text-gray-600 mb-4">
-                    Already have a farm set up?
-                </p>
-                <Link href="/simulation">
-                    <Button variant="outline" size="lg">
-                        Go to Simulation
-                    </Button>
-                </Link>
-            </section>
+            )}
         </div>
     );
 }

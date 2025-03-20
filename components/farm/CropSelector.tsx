@@ -145,19 +145,6 @@ export default function CropSelector({
                     >
                         <div className="flex-1 space-y-4">
                             <div>
-                                <label htmlFor={`crop-name-${index}`} className="block text-sm font-medium text-gray-700 mb-1">
-                                    Crop Name
-                                </label>
-                                <input
-                                    id={`crop-name-${index}`}
-                                    type="text"
-                                    value={crop.name}
-                                    onChange={(e) => handleCropChange(index, { name: e.target.value })}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500"
-                                />
-                            </div>
-
-                            <div>
                                 <label htmlFor={`crop-type-${index}`} className="block text-sm font-medium text-gray-700 mb-1">
                                     Crop Type
                                 </label>

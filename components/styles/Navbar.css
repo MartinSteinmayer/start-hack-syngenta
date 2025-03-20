@@ -1,0 +1,71 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+.navbar-link {
+  position: relative;
+  color: #1f2937;
+  transition: color 0.3s ease;
+  font-family: "Inter", sans-serif;
+  font-weight: 500;
+  padding: 0.5rem 0;
+}
+
+.navbar-link::after {
+  content: '';
+  position: absolute;
+  width: 0;
+  height: 2px;
+  bottom: -2px;
+  left: 0;
+  background-color: rgba(16, 185, 129, 0.7); /* Green color for Farm Bio-Boost theme */
+  transition: width 0.3s ease;
+}
+
+.navbar-link:hover {
+  color: rgb(16, 185, 129);
+}
+
+.navbar-link:hover::after {
+  width: 100%;
+}
+
+/* Mobile menu styling */
+.navbar-menu {
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* For screens smaller than 768px (md breakpoint in Tailwind) */
+@media (max-width: 767px) {
+  .hamburger-button {
+    display: flex;
+  }
+}
+
+/* For screens larger than 768px */
+@media (min-width: 768px) {
+  .hamburger-button {
+    display: none;
+  }
+}
+
+/* Add a backdrop for the mobile menu when open */
+.navbar-menu-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(2px);
+  z-index: 40;
+}
