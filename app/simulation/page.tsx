@@ -14,13 +14,14 @@ import { createCropTimeline, initializeTimelineController } from '@/lib/simulati
 import { updatePlantsForGrowthStage } from '@/lib/simulation/plantGrowth';
 import { convertGeoPolygonTo3D, parsePolygonFromUrl } from '@/lib/utils/coordinateUtils';
 import SeasonTimelineControls from './components/SeasonTimelineControls';
+import ProductsPopup from './components/ProductsPopup';
 import * as THREE from 'three';
 import Image from 'next/image';
 
 export default function SimulationPage() {
     // Get URL params
     const searchParams = useSearchParams();
-    
+
     // Reference to the 3D container
     const mountRef = useRef(null);
     const fileInputRef = useRef(null);
@@ -54,6 +55,11 @@ export default function SimulationPage() {
 
     // Location state
     const [location, setLocation] = useState(null);
+
+    // Products popup state
+    const [isProductsPopupOpen, setIsProductsPopupOpen] = useState(false);
+    const [selectedProduct, setSelectedProduct] = useState(null);
+    const [appliedProducts, setAppliedProducts] = useState<any[]>([]);
 
     // Track model loading progress
     useEffect(() => {
@@ -151,20 +157,20 @@ export default function SimulationPage() {
         const hectares = parseFloat(searchParams.get('hectares')) || 350;
         const crop = searchParams.get('crop') || 'corn';
         const polygonParam = searchParams.get('polygon');
-        
+
         // Parse the polygon from URL
         const geoPolygon = parsePolygonFromUrl(polygonParam);
-        
+
         // Create the farm location object
         const farmLocation = {
             latitude,
             longitude,
             name: searchParams.get('locationName') || 'Mato Grosso (Brazil)'
         };
-        
+
         // Convert the geo polygon to 3D coordinates
         const polygon3D = convertGeoPolygonTo3D(geoPolygon, farmLocation);
-        
+
         // Create the simulation parameters
         const simParams = {
             type: crop,
@@ -282,6 +288,37 @@ export default function SimulationPage() {
         }, 500);
     }, [currentSimulation]);
 
+
+    // Add this handler function:
+    const handleProductSelect = (product) => {
+        setSelectedProduct(product);
+        setIsProductsPopupOpen(false);
+
+        // Add the product to applied products list
+        setAppliedProducts(prev => [...prev, product]);
+
+        // Here you would add logic to apply the product effects to the simulation
+        // For example, you might update growth rates, stress resistance, etc.
+        console.log(`Selected product: ${product.name}`);
+
+        // Display a temporary success message
+        const successMessage = `Applied ${product.name} to the simulation!`;
+        setErrorMessage(successMessage);
+
+        // Clear the message after 3 seconds
+        setTimeout(() => {
+            if (errorMessage === successMessage) {
+                setErrorMessage('');
+            }
+        }, 3000);
+
+        // If you have a timeline controller, you could update plant properties here
+        if (timelineController) {
+            // Example of how you might modify the simulation:
+            // timelineController.applyProductEffect(product.name, product.effectStrength);
+        }
+    };
+
     return (
         <div className="flex flex-col">
 
@@ -321,6 +358,41 @@ export default function SimulationPage() {
                 <div className="w-full h-full">
                     <div ref={mountRef} className="w-full h-screen" />
                 </div>
+
+                {/* Simulate Product Button */}
+                <div className="absolute top-4 right-4 z-20">
+                    <button
+                        onClick={() => setIsProductsPopupOpen(true)}
+                        className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg shadow-lg flex items-center"
+                    >
+                        <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                        </svg>
+                        Simulate Product
+                    </button>
+                </div>
+
+                {/* Products Popup */}
+                <ProductsPopup
+                    isOpen={isProductsPopupOpen}
+                    onClose={() => setIsProductsPopupOpen(false)}
+                    onSelectProduct={handleProductSelect}
+                />
+
+                {/* Option to also display applied products */}
+                {appliedProducts.length > 0 && (
+                    <div className="absolute bottom-4 right-4 z-20 bg-white bg-opacity-80 p-3 rounded-lg shadow">
+                        <h3 className="font-medium text-sm mb-1">Applied Products:</h3>
+                        <ul className="text-xs">
+                            {appliedProducts.map((product, index) => (
+                                <li key={index} className="flex items-center">
+                                    <span className="w-2 h-2 bg-green-500 rounded-full mr-1"></span>
+                                    {product.name}
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                )}
 
                 {/* Model Loading Progress */}
                 {!modelsLoaded && modelLoadingProgress > 0 && (
