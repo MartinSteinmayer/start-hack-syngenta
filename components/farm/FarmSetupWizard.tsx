@@ -4,7 +4,10 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import LocationInput from '@/app/simulation/components/LocationInput';
+import LocationInputWithMap from './LocationInputWithMap';
 import FarmShapeStep from './FarmShapeStep';
+import FarmSizeStep from './FarmSizeStep';
+import FarmReviewStep from './FarmReviewStep';
 
 // Import additional components as needed
 
@@ -13,8 +16,7 @@ enum SetupStep {
   FARM_SIZE = 1,
   FARM_SHAPE = 2,
   CROP_SELECTION = 3,
-  PRODUCTS = 4,
-  REVIEW = 5
+  REVIEW = 4
 }
 
 const FarmSetupWizard = () => {
@@ -30,15 +32,20 @@ const FarmSetupWizard = () => {
     longitude: number;
     name: string;
   }>({
-    latitude: 39.8283,
-    longitude: -98.5795,
-    name: 'United States (default)'
+    latitude: -12.915559,
+    longitude: -55.314216,
+    name: 'Mato Grosso, Brazil'
   });
   
-  const [farmSize, setFarmSize] = useState<number>(10); // in hectares
-  const [farmShape, setFarmShape] = useState<Array<{latitude: number; longitude: number}> | null>(null);
+  const [farmSize, setFarmSize] = useState<number>(350); // Set default to 350 hectares
+  const [farmShape, setFarmShape] = useState<Array<{latitude: number; longitude: number}>>([
+    // Default polygon points based on the farm center and size
+    { latitude: farmLocation.latitude + 0.01, longitude: farmLocation.longitude - 0.01 },
+    { latitude: farmLocation.latitude + 0.01, longitude: farmLocation.longitude + 0.01 },
+    { latitude: farmLocation.latitude - 0.01, longitude: farmLocation.longitude + 0.01 },
+    { latitude: farmLocation.latitude - 0.01, longitude: farmLocation.longitude - 0.01 }
+  ]);
   const [cropType, setCropType] = useState<string>('corn');
-  const [selectedProducts, setSelectedProducts] = useState<Array<any>>([]);
   
   // Handle location change from LocationInput component
   const handleLocationChange = (latitude: number, longitude: number, locationName: string) => {
@@ -50,8 +57,8 @@ const FarmSetupWizard = () => {
   };
   
   // Handle farm size change
-  const handleFarmSizeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFarmSize(parseInt(e.target.value));
+  const handleFarmSizeChange = (size: number) => {
+    setFarmSize(size);
   };
   
   // Handle farm shape completion
@@ -61,14 +68,8 @@ const FarmSetupWizard = () => {
   };
   
   // Handle crop type selection
-  const handleCropSelection = (cropType: string) => {
-    setCropType(cropType);
-    nextStep();
-  };
-  
-  // Handle product selection
-  const handleProductsSelected = (products: Array<any>) => {
-    setSelectedProducts(products);
+  const handleCropSelection = (crop: string) => {
+    setCropType(crop);
     nextStep();
   };
   
@@ -120,11 +121,14 @@ const FarmSetupWizard = () => {
           <div className="bg-white p-6 rounded-lg shadow-md">
             <h2 className="text-2xl font-semibold mb-4 text-green-800">Select Your Farm Location</h2>
             <p className="text-gray-600 mb-6">
-              Search for your farm's location by name or enter coordinates.
+              Select your farm's location by clicking on the map, searching by name, or entering coordinates.
               This will be used to fetch weather and satellite data for your simulation.
             </p>
             
-            <LocationInput onLocationChange={handleLocationChange} />
+            <LocationInputWithMap 
+              onLocationChange={handleLocationChange} 
+              initialLocation={farmLocation}
+            />
             
             <div className="flex justify-end mt-6">
               <button
@@ -139,54 +143,13 @@ const FarmSetupWizard = () => {
         
       case SetupStep.FARM_SIZE:
         return (
-          <div className="bg-white p-6 rounded-lg shadow-md">
-            <h2 className="text-2xl font-semibold mb-4 text-green-800">Specify Your Farm Size</h2>
-            <p className="text-gray-600 mb-6">
-              Enter the approximate size of your farm in hectares.
-              This will determine the scale of your simulation.
-            </p>
-            
-            <div className="mb-6">
-              <label className="block text-sm font-medium mb-2">Farm size (hectares):</label>
-              <input
-                type="range"
-                min="1"
-                max="100"
-                value={farmSize}
-                onChange={handleFarmSizeChange}
-                className="w-full h-2 bg-green-200 rounded-lg appearance-none cursor-pointer"
-              />
-              <div className="flex justify-between mt-2">
-                <span className="text-sm text-gray-600">1 ha</span>
-                <span className="font-medium text-green-800">{farmSize} ha</span>
-                <span className="text-sm text-gray-600">100 ha</span>
-              </div>
-              
-              <div className="mt-4 p-4 bg-green-50 rounded-lg">
-                <h3 className="font-medium text-green-800 mb-2">Farm Location:</h3>
-                <p>{farmLocation.name}</p>
-                <p className="text-sm text-gray-600">
-                  Lat: {farmLocation.latitude.toFixed(4)}, Lon: {farmLocation.longitude.toFixed(4)}
-                </p>
-              </div>
-            </div>
-            
-            <div className="flex justify-between mt-6">
-              <button
-                onClick={prevStep}
-                className="px-6 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600"
-              >
-                Back
-              </button>
-              
-              <button
-                onClick={nextStep}
-                className="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
-              >
-                Continue
-              </button>
-            </div>
-          </div>
+          <FarmSizeStep
+            farmLocation={farmLocation}
+            farmSize={farmSize}
+            onFarmSizeChange={handleFarmSizeChange}
+            onContinue={nextStep}
+            onBack={prevStep}
+          />
         );
         
       case SetupStep.FARM_SHAPE:
@@ -235,33 +198,41 @@ const FarmSetupWizard = () => {
               >
                 Back
               </button>
+              <button
+                onClick={nextStep}
+                className="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+              >
+                Continue
+              </button>
             </div>
           </div>
         );
         
-      // Add additional steps as needed
+      case SetupStep.REVIEW:
+        return (
+          <FarmReviewStep
+            farmLocation={farmLocation}
+            farmSize={farmSize}
+            farmPolygon={farmShape}
+            cropType={cropType}
+            onStartSimulation={startSimulation}
+            onBack={prevStep}
+          />
+        );
         
       default:
         return (
           <div className="bg-white p-6 rounded-lg shadow-md">
-            <h2 className="text-2xl font-semibold mb-4 text-green-800">Review Your Setup</h2>
-            {/* Show summary of choices */}
-            
-            <div className="flex justify-between mt-6">
-              <button
-                onClick={prevStep}
-                className="px-6 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600"
-              >
-                Back
-              </button>
-              
-              <button
-                onClick={startSimulation}
-                className="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
-              >
-                Start Simulation
-              </button>
-            </div>
+            <h2 className="text-2xl font-semibold mb-4 text-green-800">Something went wrong</h2>
+            <p className="text-gray-600 mb-6">
+              We couldn't determine which step to display. Please try again.
+            </p>
+            <button
+              onClick={() => setCurrentStep(SetupStep.LOCATION)}
+              className="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+            >
+              Start Over
+            </button>
           </div>
         );
     }
@@ -281,8 +252,6 @@ const FarmSetupWizard = () => {
         return 'Farm Shape';
       case SetupStep.CROP_SELECTION:
         return 'Crop Selection';
-      case SetupStep.PRODUCTS:
-        return 'Products';
       case SetupStep.REVIEW:
         return 'Review';
       default:

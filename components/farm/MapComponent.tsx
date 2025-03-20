@@ -1,72 +1,74 @@
-"use client";
+// components/farm/MapComponent.tsx
+'use client'
 
 import React, { useEffect, useRef } from 'react';
-import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
-import { GeoLocation } from '@/types/farm';
 
 interface MapComponentProps {
-    location: GeoLocation;
-    onLocationChange: (location: GeoLocation) => void;
+  latitude: number;
+  longitude: number;
+  hectares?: number;
+  className?: string;
+  showCircle?: boolean;
 }
 
-// Component to handle map clicks and update location
-function LocationMarker({
-    position,
-    setPosition
-}: {
-    position: GeoLocation;
-    setPosition: (pos: GeoLocation) => void;
-}) {
-    const map = useMapEvents({
-        click(e) {
-            const newPos = { lat: e.latlng.lat, lng: e.latlng.lng };
-            setPosition(newPos);
-        },
-    });
+const MapComponent: React.FC<MapComponentProps> = ({
+  latitude,
+  longitude,
+  hectares = 100,
+  className = "w-full h-64",
+  showCircle = true
+}) => {
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  
+  useEffect(() => {
+    // Generate an approximation of radius in kilometers based on hectares
+    // 1 hectare = 0.01 square kilometers
+    // Area = π * r²
+    // Solve for r: r = sqrt(Area / π)
+    const areaKm2 = hectares * 0.01;
+    const radiusKm = Math.sqrt(areaKm2 / Math.PI);
+    
+    // Calculate zoom level based on radius
+    let zoomLevel = 14;
+    if (radiusKm > 0.5) zoomLevel = 13;
+    if (radiusKm > 1) zoomLevel = 12;
+    if (radiusKm > 2) zoomLevel = 11;
+    if (radiusKm > 5) zoomLevel = 10;
+    if (radiusKm > 10) zoomLevel = 9;
+    if (radiusKm > 20) zoomLevel = 8;
+    if (radiusKm > 50) zoomLevel = 7;
+    
+    // Create the OpenStreetMap embed URL
+    let url = `https://www.openstreetmap.org/export/embed.html?bbox=${longitude-0.1},${latitude-0.1},${longitude+0.1},${latitude+0.1}&layer=mapnik&marker=${latitude},${longitude}`;
+    
+    // Alternatively with zoom level
+    url = `https://www.openstreetmap.org/export/embed.html?bbox=${longitude-0.2},${latitude-0.2},${longitude+0.2},${latitude+0.2}&layer=mapnik&marker=${latitude},${longitude}&zoom=${zoomLevel}`;
+    
+    // Set the iframe source
+    if (iframeRef.current) {
+      iframeRef.current.src = url;
+    }
+  }, [latitude, longitude, hectares]);
 
-    return <Marker position={[position.lat, position.lng]} />;
-}
+  return (
+    <div className={`relative overflow-hidden rounded-md border border-gray-300 ${className}`}>
+      <iframe
+        ref={iframeRef}
+        width="100%"
+        height="100%"
+        frameBorder="0"
+        scrolling="no"
+        className="absolute inset-0 w-full h-full"
+        title="Farm location map"
+      ></iframe>
+      
+      {/* We can't easily add a circle overlay on the iframe, but we could add explanatory text */}
+      <div className="absolute bottom-0 left-0 right-0 bg-white bg-opacity-80 p-2 text-xs">
+        Farm location: {latitude.toFixed(6)}, {longitude.toFixed(6)}
+        {hectares && <span> • Approx. {hectares} hectares</span>}
+      </div>
+    </div>
+  );
+};
 
-export default function MapComponent({ location, onLocationChange }: MapComponentProps) {
-    const mapRef = useRef<L.Map | null>(null);
-
-    // Fix Leaflet icon issue - only runs on client
-    useEffect(() => {
-        // Fix for Leaflet marker icons in Next.js
-        delete (L.Icon.Default.prototype as any)._getIconUrl;
-        L.Icon.Default.mergeOptions({
-            iconRetinaUrl: '/images/icons/marker-icon-2x.png',
-            iconUrl: '/images/icons/marker-icon.png',
-            shadowUrl: '/images/icons/marker-shadow.png',
-        });
-
-        // Center map when location changes from external sources
-        if (mapRef.current) {
-            mapRef.current.setView([location.lat, location.lng], 10);
-        }
-    }, [location.lat, location.lng]);
-
-    return (
-        <div className="h-64 rounded-md overflow-hidden border border-gray-300">
-            <MapContainer
-                center={[location.lat, location.lng]}
-                zoom={10}
-                className="h-full w-full"
-                whenCreated={(map) => {
-                    mapRef.current = map;
-                }}
-            >
-                <TileLayer
-                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                />
-                <LocationMarker
-                    position={location}
-                    setPosition={onLocationChange}
-                />
-            </MapContainer>
-        </div>
-    );
-}
+export default MapComponent;

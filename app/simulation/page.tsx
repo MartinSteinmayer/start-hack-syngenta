@@ -1,16 +1,21 @@
 'use client'
 
 import React, { useState, useEffect, useRef } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { setupScene } from '@/lib/simulation/sceneSetup';
 import { createSkybox, createTerrain, createClouds, animateClouds } from '@/lib/environment';
 import { createCropFieldSimulation } from '@/lib/simulation';
 import { createCropTimeline, initializeTimelineController } from '@/lib/simulation/timeline';
 import { updatePlantsForGrowthStage } from '@/lib/simulation/plantGrowth';
+import { convertGeoPolygonTo3D, parsePolygonFromUrl } from '@/lib/utils/coordinateUtils';
 import SeasonTimelineControls from './components/SeasonTimelineControls';
 import * as THREE from 'three';
 import Image from 'next/image';
 
 export default function SimulationPage() {
+    // Get URL params
+    const searchParams = useSearchParams();
+    
     // Reference to the 3D container
     const mountRef = useRef(null);
     const fileInputRef = useRef(null);
@@ -108,32 +113,44 @@ export default function SimulationPage() {
         // Start animation loop
         animate();
 
-        // Load a default simulation immediately
-        setTimeout(() => {
-            const defaultSimParams = {
-                type: 'soybean',
-                hectares: 1.5,  // Smaller field size for better density
-                density: 100,    // Higher density
-                polygon: [
-                    [-30, 0, -30],
-                    [-30, 0, 30],
-                    [30, 0, 30],
-                    [30, 0, -30]
-                ],
-                location: {
-                    latitude: -12.915559,
-                    longitude: -55.314216,
-                    name: 'Mato Grosso (Brazil)'
-                },
-                weatherSettings: {
-                    useRealWeather: true
-                }
-            };
+        // Load simulation based on URL params if available
+        const latitude = parseFloat(searchParams.get('lat')) || -12.915559;
+        const longitude = parseFloat(searchParams.get('lng')) || -55.314216;
+        const hectares = parseFloat(searchParams.get('hectares')) || 350;
+        const crop = searchParams.get('crop') || 'corn';
+        const polygonParam = searchParams.get('polygon');
+        
+        // Parse the polygon from URL
+        const geoPolygon = parsePolygonFromUrl(polygonParam);
+        
+        // Create the farm location object
+        const farmLocation = {
+            latitude,
+            longitude,
+            name: searchParams.get('locationName') || 'Mato Grosso (Brazil)'
+        };
+        
+        // Convert the geo polygon to 3D coordinates
+        const polygon3D = convertGeoPolygonTo3D(geoPolygon, farmLocation);
+        
+        // Create the simulation parameters
+        const simParams = {
+            type: crop,
+            hectares: Math.min(hectares, 1000), // Cap at 1000 hectares for performance
+            density: hectares > 100 ? 50 : hectares > 50 ? 75 : 100, // Adjust density based on farm size
+            polygon: polygon3D,
+            location: farmLocation,
+            weatherSettings: {
+                useRealWeather: true
+            }
+        };
 
-            // This will trigger the simulation effect
-            setCurrentSimulation(defaultSimParams);
-            setLocation(defaultSimParams.location);
-        }, 100);
+        console.log("Creating simulation with parameters:", simParams);
+        console.log("Using 3D polygon:", polygon3D);
+
+        // This will trigger the simulation effect
+        setCurrentSimulation(simParams);
+        setLocation(farmLocation);
 
         // Cleanup on unmount
         return () => {
@@ -153,7 +170,7 @@ export default function SimulationPage() {
                 }
             });
         };
-    }, []);
+    }, [searchParams]);
 
     // Clear existing simulation and start a new one when parameters change
     useEffect(() => {

@@ -26,8 +26,9 @@ const FarmShapeStep: React.FC<FarmShapeStepProps> = ({
   
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
+  const imageContainerRef = useRef<HTMLDivElement>(null);
   
-  // Fetch satellite image when component mounts
+  // Fetch satellite image when component mounts or when location/size changes
   useEffect(() => {
     fetchSatelliteImage();
   }, [farmLocation, farmSize]);
@@ -39,12 +40,15 @@ const FarmShapeStep: React.FC<FarmShapeStepProps> = ({
       const ctx = canvas.getContext('2d');
       
       if (ctx) {
+        // Set the canvas size to match the image exactly
+        // This is important for preventing scaling/zooming issues
+        canvas.width = imageRef.current.width;
+        canvas.height = imageRef.current.height;
+        
         // Clear canvas
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         
         // Draw the satellite image on the canvas
-        canvas.width = imageRef.current.width;
-        canvas.height = imageRef.current.height;
         ctx.drawImage(imageRef.current, 0, 0);
       }
     }
@@ -57,6 +61,10 @@ const FarmShapeStep: React.FC<FarmShapeStepProps> = ({
       const ctx = canvas.getContext('2d');
       
       if (ctx) {
+        // Make sure canvas dimensions are correct
+        canvas.width = imageRef.current.width;
+        canvas.height = imageRef.current.height;
+        
         // Redraw the image
         ctx.drawImage(imageRef.current, 0, 0);
         
@@ -153,7 +161,6 @@ const FarmShapeStep: React.FC<FarmShapeStepProps> = ({
           
           if (isDevelopment) {
             // In development, use a Next.js API route proxy
-            // You'll need to create this API route
             const proxyUrl = '/api/satellite-proxy';
             const proxyResponse = await fetch(proxyUrl, {
               method: 'POST',
@@ -198,9 +205,9 @@ const FarmShapeStep: React.FC<FarmShapeStepProps> = ({
       console.error('Error fetching satellite image:', err);
       
       // Provide more specific error messaging for common issues
-      if (err.message.includes('CORS')) {
+      if (err.message?.includes('CORS')) {
         setError("CORS error: The satellite API server needs to allow requests from your frontend. Please add CORS headers to your Python API or use a proxy.");
-      } else if (err.name === 'TypeError' && err.message.includes('Failed to fetch')) {
+      } else if (err.name === 'TypeError' && err.message?.includes('Failed to fetch')) {
         setError("Connection error: Cannot connect to the satellite API. Make sure the API server is running at http://localhost:5032");
       } else {
         setError(`Error fetching satellite image: ${err.message}`);
@@ -222,8 +229,14 @@ const FarmShapeStep: React.FC<FarmShapeStepProps> = ({
     
     const canvas = canvasRef.current;
     const rect = canvas.getBoundingClientRect();
-    const x = event.clientX - rect.left;
-    const y = event.clientY - rect.top;
+    
+    // Calculate the scale ratio between the canvas element size and its internal dimensions
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    
+    // Get the click position in canvas coordinates
+    const x = (event.clientX - rect.left) * scaleX;
+    const y = (event.clientY - rect.top) * scaleY;
     
     setPolygonPoints([...polygonPoints, { x, y }]);
   };
@@ -387,18 +400,44 @@ const FarmShapeStep: React.FC<FarmShapeStepProps> = ({
                 )}
               </div>
               
-              <div className="relative border rounded-lg overflow-hidden bg-gray-100">
-                <img
-                  ref={imageRef}
-                  src={satelliteImage}
-                  alt="Satellite view of farm location"
-                  className="w-full h-auto"
-                />
-                <canvas
-                  ref={canvasRef}
-                  onClick={handleCanvasClick}
-                  className="absolute top-0 left-0 w-full h-full cursor-crosshair"
-                ></canvas>
+              <div className="relative border rounded-lg overflow-hidden bg-gray-100" ref={imageContainerRef}>
+                {/* Image */}
+                <div className="relative" style={{ width: '100%' }}>
+                  <img
+                    ref={imageRef}
+                    src={satelliteImage}
+                    alt="Satellite view of farm location"
+                    className="w-full h-auto max-w-full"
+                    style={{ display: 'block' }}
+                    onLoad={() => {
+                      // Ensure canvas matches image dimensions exactly when image loads
+                      if (canvasRef.current && imageRef.current) {
+                        canvasRef.current.width = imageRef.current.width;
+                        canvasRef.current.height = imageRef.current.height;
+                        
+                        // Redraw if needed
+                        if (polygonPoints.length > 0) {
+                          const ctx = canvasRef.current.getContext('2d');
+                          if (ctx) {
+                            ctx.drawImage(imageRef.current, 0, 0);
+                          }
+                        }
+                      }
+                    }}
+                  />
+                  {/* Canvas overlay - position absolute and sized to match image exactly */}
+                  <canvas
+                    ref={canvasRef}
+                    onClick={handleCanvasClick}
+                    className="absolute top-0 left-0 cursor-crosshair"
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      pointerEvents: isDrawing ? 'auto' : 'none'
+                    }}
+                  ></canvas>
+                </div>
+                
                 {isDrawing && (
                   <div className="absolute top-2 left-2 bg-white p-2 rounded shadow text-sm">
                     Click to add points. Add at least 3 points and click "Complete Polygon".
