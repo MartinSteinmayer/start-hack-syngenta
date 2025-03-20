@@ -15,7 +15,6 @@ interface WeatherData {
 
 interface CropGrowthRequest {
     weather: WeatherData;
-    reproductive: number;
     crop: string;
     product: string;
     soil_ph: number;
@@ -26,6 +25,7 @@ interface CropGrowthResponse {
     growth_rate_increase: number;
     daily_growth_percentage: number;
     yield_risk: number;
+    estimated_yield: number;
     observations: string;
 }
 
@@ -33,6 +33,7 @@ interface CropGddData {
     crop: string;
     base_temperature: number;
     total_gdd: number;
+    baseline_yield: number;
 }
 
 interface CropOptimalData {
@@ -77,12 +78,12 @@ class OpenAIService {
             
             await this.loadCropOptimalData();
             
-            const systemPrompt = `You are an algorithm that calculates the growth rate of a certain crop based on the following conditions: {weather: {precipitation: mm, min_temperature: celsius degrees, max_temperature: celsius degrees, humidity: percentage}, reproductive: percentage), crop: string, product: string}. The crops can be: soybean, wheat, corn, cotton, rice There are three types of products, Stress Buster, Yield Booster, and Nutrient use efficiency (NUE) products. In product, I will pass: stress_buster, yield_booster, or nue, depending on the product you should use. Based on it, you should rely on the respective information for each product (given below in markdown format, one product per time) to predict the growth rate of the crop given the other conditions (weather, soil (reproductive)). Furthermore, you should return a field Observations (short) with some key insights. Also, there are some products that are adequate for certain crops only. Below, there is the list of adequate products vs crops applicable (in table in markdown). You should take this into consideration when returning the growth rate for each set of conditions. If the product is not applicable to that crop, please return growth_rate_increase as 0, and in the observations return that product not applicable, and wont's make a difference (in better words). ${productCropFitMarkdown} INFORMATIONS FOR EACH PRODUCT: ${stressBusterMarkdown} ${yieldBoosterMarkdown} ${nueMarkdown} From now on, I will send you conditions for each request. Your answer should look like 
+            const systemPrompt = `You are an algorithm that calculates the growth rate of a certain crop based on the following conditions: {weather: {precipitation: mm, min_temperature: celsius degrees, max_temperature: celsius degrees, humidity: percentage}, crop: string, product: string}. The crops can be: soybean, wheat, corn, cotton, rice There are three types of products, Stress Buster, Yield Booster, and Nutrient use efficiency (NUE) products. In product, I will pass: stress_buster, yield_booster, or nue, depending on the product you should use. Based on it, you should rely on the respective information for each product (given below in markdown format, one product per time) to predict the growth rate of the crop given the other conditions (like weather). Furthermore, you should return a field Observations (short) with some key insights. Also, there are some products that are adequate for certain crops only. Below, there is the list of adequate products vs crops applicable (in table in markdown). You should take this into consideration when returning the growth rate for each set of conditions. If the product is not applicable to that crop, please return growth_rate_increase as 0, and in the observations return that product not applicable, and wont's make a difference (in better words). ${productCropFitMarkdown} INFORMATIONS FOR EACH PRODUCT: ${stressBusterMarkdown} ${yieldBoosterMarkdown} ${nueMarkdown} From now on, I will send you conditions for each request. Your answer should look like 
             {
             "growth_rate_increase": X,
             "observations": x
             }
-            Only answer with this, nothing else.`;
+            Only answer with this, nothing else. If growth_rate_increase is 5%, for example, the result should return 0.05. iT'S JUST AN EXAMPLE of the format of the output`;
 
             this.conversationHistory = [{ role: "system", content: systemPrompt }];
             
@@ -107,7 +108,8 @@ class OpenAIService {
             this.cropGddData = records.map((record: any) => ({
                 crop: record.crop.toLowerCase(),
                 base_temperature: parseFloat(record.base_temperature),
-                total_gdd: parseFloat(record.total_gdd)
+                total_gdd: parseFloat(record.total_gdd),
+                baseline_yield: parseFloat(record.baseline_yield) // Add this line to extract baseline yield
             }));
             
             console.log(`Loaded GDD data for ${this.cropGddData.length} crops`);
@@ -152,7 +154,7 @@ class OpenAIService {
         if (!this.isInitialized) {
             await this.initialize();
         }
-
+    
         const userMessage = `Current conditions: ${JSON.stringify(requestData)}`;
         
         const resultContent = await this.callOpenAI(userMessage);
@@ -183,22 +185,23 @@ class OpenAIService {
                 };
             }
         }
-
+    
         if (typeof openAIResponse.growth_rate_increase !== 'number') {
             console.warn(`Invalid growth_rate_increase value, defaulting to 0`);
             openAIResponse.growth_rate_increase = 0;
         }
-
+    
         if (!openAIResponse.observations) {
             openAIResponse.observations = "No observations provided.";
         }
-
+    
         const cropData = this.cropGddData.find(crop => crop.crop === requestData.crop.toLowerCase());
         const cropOptimal = this.cropOptimalData.find(crop => crop.crop === requestData.crop.toLowerCase());
         
         let dailyGrowthPercentage = 0;
         let yieldRisk = 0;
         let calculatedGdd = 0;
+        let estimatedYield = 0;
         
         if (cropData) {
             calculatedGdd = this.calculateGdd(
@@ -209,8 +212,9 @@ class OpenAIService {
             
             dailyGrowthPercentage = (calculatedGdd / cropData.total_gdd) * 100;
             
-            // Adjust daily growth based on AI-provided growth rate increase (from product application)
-            dailyGrowthPercentage *= (1 + openAIResponse.growth_rate_increase / 100);
+            dailyGrowthPercentage *= (1 + openAIResponse.growth_rate_increase);
+            
+            estimatedYield = cropData.baseline_yield * (1 + openAIResponse.growth_rate_increase);
         } else {
             console.warn(`No GDD data found for crop: ${requestData.crop}`);
         }
@@ -226,11 +230,11 @@ class OpenAIService {
             const optimalPH = cropOptimal.ph_optimal;
             const optimalNitrogen = cropOptimal.n_optimal;
             
-            // Define weights as per the example
-            const w1 = 0.3; // GDD weight
-            const w2 = 0.3; // Precipitation weight
-            const w3 = 0.2; // pH weight
-            const w4 = 0.2; // Nitrogen weight
+            // Define weights as per the example in Syngenta's documentation 
+            const w1 = 0.3;
+            const w2 = 0.3;
+            const w3 = 0.2;
+            const w4 = 0.2;
             
             // Calculate yield risk using the formula:
             // YR = w1·(GDD - GDD_opt)² + w2·(P - P_opt)² + w3·(pH - pH_opt)² + w4·(N - N_opt)²
@@ -248,9 +252,10 @@ class OpenAIService {
             growth_rate_increase: openAIResponse.growth_rate_increase,
             daily_growth_percentage: parseFloat(dailyGrowthPercentage.toFixed(2)),
             yield_risk: parseFloat(yieldRisk.toFixed(2)),
+            estimated_yield: parseFloat(estimatedYield.toFixed(2)),
             observations: openAIResponse.observations
         };
-
+    
         return growthRateResponse;
     }
 

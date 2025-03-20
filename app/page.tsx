@@ -70,15 +70,6 @@ export default function HomePage() {
                     {showWizard && (
                         <div id="setup-wizard" className="pt-4 pb-12">
                             <FarmSetupWizard />
-
-                            <div className="text-center mt-8">
-                                <button
-                                    onClick={() => setShowWizard(false)}
-                                    className="text-white hover:text-gray-200 text-sm underline"
-                                >
-                                    Return to home page
-                                </button>
-                            </div>
                         </div>
                     )}
                 </div>
