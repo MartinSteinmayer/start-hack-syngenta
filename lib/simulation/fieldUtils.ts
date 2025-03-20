@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { HECTARE_TO_SQUARE_METERS, SCALE_FACTOR } from '../crops';
+import { HECTARE_TO_SQUARE_METERS, SCALE_FACTOR, PLANT_ROW_SPACING, PLANT_SPACING_IN_ROW, RANDOMIZATION_FACTORS } from '../crops';
 
 /**
  * Calculate the area of a polygon in square units
@@ -12,6 +12,34 @@ export const calculatePolygonArea = (vertices) => {
     area += (vertices[i][0] * vertices[j][2]) - (vertices[j][0] * vertices[i][2]);
   }
   return Math.abs(area) / 2;
+};
+
+/**
+ * Calculate the dimensions of a polygon
+ * @param {Array} vertices - Array of vertices defining the polygon
+ * @returns {Object} - Object containing width, height, and center of the polygon
+ */
+export const calculatePolygonDimensions = (vertices) => {
+  let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
+  
+  vertices.forEach(vertex => {
+    minX = Math.min(minX, vertex[0]);
+    maxX = Math.max(maxX, vertex[0]);
+    minZ = Math.min(minZ, vertex[2]);
+    maxZ = Math.max(maxZ, vertex[2]);
+  });
+  
+  return {
+    width: maxX - minX,
+    height: maxZ - minZ,
+    center: {
+      x: (minX + maxX) / 2,
+      z: (minZ + maxZ) / 2
+    },
+    bounds: {
+      minX, maxX, minZ, maxZ
+    }
+  };
 };
 
 /**
@@ -54,11 +82,11 @@ export const scalePolygonToHectares = (polygon, hectares) => {
   });
   
   const width = maxX - minX;
-  const depth = maxZ - minZ;
+  const height = maxZ - minZ;
   
   // If either dimension is too large, apply additional scaling
-  if (width > maxDimension || depth > maxDimension) {
-    const additionalScaleFactor = Math.min(maxDimension / width, maxDimension / depth);
+  if (width > maxDimension || height > maxDimension) {
+    const additionalScaleFactor = Math.min(maxDimension / width, maxDimension / height);
     
     return scaled.map(point => [
       centroidX + (point[0] - centroidX) * additionalScaleFactor,
@@ -69,8 +97,8 @@ export const scalePolygonToHectares = (polygon, hectares) => {
   
   // Ensure minimum field size for visibility - no fields smaller than 40x40
   const minDimension = 40;
-  if (width < minDimension || depth < minDimension) {
-    const minScaleFactor = Math.max(minDimension / width, minDimension / depth);
+  if (width < minDimension || height < minDimension) {
+    const minScaleFactor = Math.max(minDimension / width, minDimension / height);
     
     return scaled.map(point => [
       centroidX + (point[0] - centroidX) * minScaleFactor,
@@ -123,6 +151,91 @@ export const getRandomPointInTriangle = (triangle) => {
   const z = a * triangle[0][2] + b * triangle[1][2] + c * triangle[2][2];
   
   return { x, z };
+};
+
+/**
+ * Check if a point is inside the polygon
+ * @param {Object} point - Point {x, z} to check
+ * @param {Array} polygon - Array of vertices defining the polygon
+ * @returns {boolean} - True if the point is inside the polygon
+ */
+export const isPointInPolygon = (point, polygon) => {
+  const { x, z } = point;
+  let inside = false;
+  
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const xi = polygon[i][0], zi = polygon[i][2];
+    const xj = polygon[j][0], zj = polygon[j][2];
+    
+    const intersect = ((zi > z) !== (zj > z)) && 
+      (x < (xj - xi) * (z - zi) / (zj - zi) + xi);
+    
+    if (intersect) inside = !inside;
+  }
+  
+  return inside;
+};
+
+/**
+ * Generate grid-based plant positions for a field
+ * @param {Array} polygon - Array of vertices defining the polygon
+ * @param {string} cropType - Type of crop
+ * @param {number} density - Density percentage (0-100)
+ * @returns {Array} - Array of plant positions {x, z}
+ */
+export const generateGridPlantPositions = (polygon, cropType, density) => {
+  // Get field dimensions
+  const dimensions = calculatePolygonDimensions(polygon);
+  const { width, height, bounds } = dimensions;
+  
+  // Get spacing for this crop type
+  const rowSpacing = PLANT_ROW_SPACING[cropType] || 0.5;
+  const plantSpacing = PLANT_SPACING_IN_ROW[cropType] || 0.1;
+  
+  // Apply density adjustment - increase spacing when density is lower
+  const densityFactor = density / 100;
+  const adjustedRowSpacing = rowSpacing / Math.sqrt(densityFactor);
+  const adjustedPlantSpacing = plantSpacing / Math.sqrt(densityFactor);
+  
+  // Calculate rows and columns based on adjusted spacing
+  const numRows = Math.ceil(height / adjustedRowSpacing);
+  const plantsPerRow = Math.ceil(width / adjustedPlantSpacing);
+  
+  // Scale to Three.js coordinates
+  const scaledRowSpacing = adjustedRowSpacing * SCALE_FACTOR;
+  const scaledPlantSpacing = adjustedPlantSpacing * SCALE_FACTOR;
+  
+  console.log(`Grid setup for ${cropType}: ${numRows} rows with ${plantsPerRow} plants per row`);
+  console.log(`Row spacing: ${scaledRowSpacing}, Plant spacing: ${scaledPlantSpacing}`);
+  
+  const positions = [];
+  
+  // Generate grid starting from the bottom-left of the field
+  for (let row = 0; row < numRows; row++) {
+    // Offset every other row for staggered planting (common in some crops)
+    const rowOffset = (cropType === 'corn' || cropType === 'soybean') && row % 2 === 1 
+      ? scaledPlantSpacing / 2 
+      : 0;
+    
+    for (let col = 0; col < plantsPerRow; col++) {
+      // Calculate base position
+      const x = bounds.minX + (col * scaledPlantSpacing) + rowOffset;
+      const z = bounds.minZ + (row * scaledRowSpacing);
+      
+      // Add small random variation for natural look
+      const randomX = x + (Math.random() * 2 - 1) * scaledPlantSpacing * RANDOMIZATION_FACTORS.position;
+      const randomZ = z + (Math.random() * 2 - 1) * scaledRowSpacing * RANDOMIZATION_FACTORS.position;
+      
+      const position = { x: randomX, z: randomZ };
+      
+      // Only add the position if it's inside the polygon
+      if (isPointInPolygon(position, polygon)) {
+        positions.push(position);
+      }
+    }
+  }
+  
+  return positions;
 };
 
 /**
