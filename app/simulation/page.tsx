@@ -1111,8 +1111,8 @@ export default function SimulationPage() {
                             </div>
 
                             <div className="mb-4">
-                                <h3 className="text-sm font-medium text-gray-900 mb-1">Recommendation:</h3>
-                                <p className="text-sm text-gray-600">{droughtRiskAlert.recommendation}</p>
+                                <h3 className="text-sm font-medium text-gray-900 mb-1">Warning:</h3>
+                                <p className="text-sm text-gray-600">{droughtRiskAlert.warning}</p>
                             </div>
 
                             <div className="bg-gray-50 p-3 rounded mb-4">
