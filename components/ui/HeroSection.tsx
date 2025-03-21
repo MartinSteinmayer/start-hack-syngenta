@@ -30,19 +30,23 @@ export default function HeroSection({ onGetStarted }: HeroSectionProps) {
             {/* Main content container - positioned absolutely to maintain layout */}
             <div className="fixed inset-0 z-5 flex items-center justify-center pt-16">
                 <div className="text-center px-4 py-8 max-w-3xl mx-auto">
-                    <h1 className="text-5xl font-bold text-white mb-6">
-                        Nature helps nature
-                    </h1>
+                        <Image 
+                            src="/logo_white.png" 
+                            alt="Crop & Paste" 
+                            width={900} 
+                            height={450} 
+                            className="m-4"
+                        />
                     <h2 className="text-2xl md:text-3xl text-white mb-8">
-                        Use AI to improve global farming through nature-powered innovation
+                        A digital copy of your farm.
                     </h2>
 
                     <div className="backdrop-blur-sm bg-white/10 rounded-xl p-6 mb-10 border border-white/20">
-                        <p className="text-lg text-white mb-8">
-                            Our AI-powered Farm Bio-Boost Simulator helps you visualize environmental risks,
+                        <h4 className="text-xl text-white mb-8">
+                            Our AI-powered digital twin helps you visualize environmental risks,
                             recommend biological products for your specific crops, and track outcomes to
                             improve yields sustainably.
-                        </p>
+                        </h4>
 
                         {/* Get Started button */}
                         <button

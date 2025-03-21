@@ -7,7 +7,7 @@ import { Suspense } from 'react';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-    title: 'Farm Bio-Boost Simulator',
+    title: 'Crop & Paste',
     description: 'Simulate the effects of biological products on crop performance',
 };
 
