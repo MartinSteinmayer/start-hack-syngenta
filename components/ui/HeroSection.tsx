@@ -42,11 +42,11 @@ export default function HeroSection({ onGetStarted }: HeroSectionProps) {
                     </h2>
 
                     <div className="backdrop-blur-sm bg-white/10 rounded-xl p-6 mb-10 border border-white/20">
-                        <p className="text-lg text-white mb-8">
+                        <h4 className="text-xl text-white mb-8">
                             Our AI-powered digital twin helps you visualize environmental risks,
                             recommend biological products for your specific crops, and track outcomes to
                             improve yields sustainably.
-                        </p>
+                        </h4>
 
                         {/* Get Started button */}
                         <button
