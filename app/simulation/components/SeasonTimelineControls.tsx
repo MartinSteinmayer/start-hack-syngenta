@@ -127,31 +127,6 @@ const SeasonTimelineControls: React.FC<SeasonTimelineControlsProps> = ({
                     )}
                 </div>
 
-                {/* Season Navigation */}
-                <div className="space-y-4">
-                    <h3 className="text-sm font-semibold text-green-200">Season Navigation</h3>
-                    <div className="flex flex-col space-y-3">
-                        {Object.entries(seasons).map(([key, data]) => (
-                            <button
-                                key={key}
-                                onClick={() => handleSeasonSelect(key)}
-                                className={`w-full p-3 rounded-lg text-left transition-all ${currentSeason === key
-                                    ? 'bg-green-600 border-2 border-green-500'
-                                    : 'bg-green-700 hover:bg-green-600'
-                                    }`}
-                            >
-                                <div className="font-medium">{data.label}</div>
-                                <div className="text-xs mt-1 text-green-200">
-                                    Days {data.day + 1}-{key === 'early' ?
-                                        Math.floor(totalDays * 0.33) :
-                                        key === 'middle' ?
-                                            Math.floor(totalDays * 0.67) :
-                                            totalDays}
-                                </div>
-                            </button>
-                        ))}
-                    </div>
-                </div>
 
                 {/* Crop Status */}
                 {dayInfo && (
@@ -206,6 +181,32 @@ const SeasonTimelineControls: React.FC<SeasonTimelineControlsProps> = ({
                         </div>
                     </div>
                 )}
+
+                {/* Season Navigation */}
+                <div className="space-y-4">
+                    <h3 className="text-sm font-semibold text-green-200">Season Navigation</h3>
+                    <div className="flex flex-col space-y-3">
+                        {Object.entries(seasons).map(([key, data]) => (
+                            <button
+                                key={key}
+                                onClick={() => handleSeasonSelect(key)}
+                                className={`w-full p-3 rounded-lg text-left transition-all ${currentSeason === key
+                                    ? 'bg-green-600 border-2 border-green-500'
+                                    : 'bg-green-700 hover:bg-green-600'
+                                    }`}
+                            >
+                                <div className="font-medium">{data.label}</div>
+                                <div className="text-xs mt-1 text-green-200">
+                                    Days {data.day + 1}-{key === 'early' ?
+                                        Math.floor(totalDays * 0.33) :
+                                        key === 'middle' ?
+                                            Math.floor(totalDays * 0.67) :
+                                            totalDays}
+                                </div>
+                            </button>
+                        ))}
+                    </div>
+                </div>
 
                 <div className="mt-auto space-y-6">
                     {/* Speed Control */}

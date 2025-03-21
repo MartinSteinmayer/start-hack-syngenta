@@ -211,7 +211,7 @@ export default function SimulationPage() {
             directional: directionalLight,
             ambient: ambientLight
         };
-        
+
         // Create environment
         createSkybox(scene);
         createTerrain(scene);
@@ -450,7 +450,7 @@ export default function SimulationPage() {
 
                 // If risk is higher than "No risk", show the alert
                 if (riskData.data.riskLevel !== 'No risk' && !droughtRiskShown) {
-                    setShowDroughtAlert(true);
+                    setTimeout(() => setShowDroughtAlert(true), 3000);
                 }
 
                 setDroughtRiskShown(true);
@@ -984,7 +984,7 @@ export default function SimulationPage() {
 
                 {/* Success message with contextual styling */}
                 {successMessage && (
-                    <div className={`absolute top-20 right-4 p-3 ${messageDetails.growthRate > 2 ? 'bg-green-600' : 'bg-red-600'
+                    <div className={`absolute top-20 right-4 p-3 ${messageDetails.growthRate > 2 ? 'bg-green-600' : 'bg-gray-600'
                         } text-white rounded shadow-lg max-w-md z-20`}>
                         <div className="flex justify-between items-start">
                             <div className="flex-1">
