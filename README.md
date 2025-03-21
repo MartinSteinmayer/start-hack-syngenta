@@ -1,12 +1,10 @@
-# Farm Bio-Boost: Digital Twin for Agricultural Simulation
+# Crop & Paster: Digital Twin for Agricultural Simulation
 
 ![Farm Bio-Boost Logo](/public/logo_white.png)
 
 ## 🌱 Project Overview
 
-Farm Bio-Boost is an AI-powered digital twin application designed to help farmers visualize environmental risks, recommend biological products for their specific crops, and track outcomes to improve yields sustainably. Created for the Syngenta START Hack 2025 challenge, this solution addresses the lack of understanding and data access on biological efficacy across various climates, soil types, and conditions.
-
-### APP Deployed at https://crop-and-paste.vercel.app/
+Crop & Paster is an AI-powered digital twin application designed to help farmers visualize environmental risks, recommend biological products for their specific crops, and track outcomes to improve yields sustainably. Created for the Syngenta START Hack 2025 challenge, this solution addresses the lack of understanding and data access on biological efficacy across various climates, soil types, and conditions.
 
 ### 🎯 Key Features
 
@@ -18,7 +16,7 @@ Farm Bio-Boost is an AI-powered digital twin application designed to help farmer
 
 ## 🚀 Live Demo
 
-[View Live Demo](https://farm-bio-boost.vercel.app/) (placeholder link - replace with actual demo when available)
+[View Live Demo](https://crop-and-paste.vercel.app/)
 
 ## 📋 Table of Contents
 
