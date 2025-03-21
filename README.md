@@ -14,7 +14,7 @@ Crop & Paster is an AI-powered digital twin application designed to help farmers
 - **Outcome Tracking**: Monitor results throughout the growing season and use the data to improve recommendations for subsequent years
 - **Drought Risk Alerts**: Receive early warnings about potential drought conditions and recommended preventative measures
 
-## 🚀 Test it out Yourself
+## 🚀 Test it out Yourself!
 
 [Live here](https://crop-and-paste.vercel.app/)
 
