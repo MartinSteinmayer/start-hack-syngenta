@@ -13,6 +13,7 @@ interface DroughtRiskResponse {
         droughtIndex: number;
         riskLevel: string;
         recommendation: string;
+        warning: string | null;
         inputs: {
             rainfall: number;
             evaporation: number;
@@ -65,6 +66,7 @@ export async function POST(request: NextRequest) {
         
         let riskLevel = '';
         let recommendation = '';
+        let warning: string | null = null;
         
         if (roundedDI > 1) {
             riskLevel = 'No risk';
@@ -72,6 +74,12 @@ export async function POST(request: NextRequest) {
         } else {
             riskLevel = 'Medium risk';
             recommendation = 'Monitor moisture levels closely. Consider implementing water conservation measures, drought-resistant crop varieties, and adjusted irrigation schedules if available.';
+            
+            // Calculate the estimated days until drought conditions based on droughtIndex
+            // Lower index means drought will occur sooner
+            const daysUntilDrought = Math.max(Math.round(Math.abs(roundedDI) * 4), 1); // Min 1 week
+            
+            warning = `Medium drought risk predicted in your crop area in ${daysUntilDrought} week(s). We recommend using Stress Buster to protect against stress conditions.`;
         }
         
         const response: DroughtRiskResponse = {
@@ -80,6 +88,7 @@ export async function POST(request: NextRequest) {
                 droughtIndex: roundedDI,
                 riskLevel,
                 recommendation,
+                warning,
                 inputs: {
                     rainfall,
                     evaporation,
