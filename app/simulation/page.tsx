@@ -69,6 +69,9 @@ export default function SimulationPage() {
         isSuccess: true
     });
     const [statusMessage, setStatusMessage] = useState('');
+    const [droughtRiskAlert, setDroughtRiskAlert] = useState(null);
+    const [showDroughtAlert, setShowDroughtAlert] = useState(false);
+    const [droughtRiskShown, setDroughtRiskShown] = useState(false);
 
     // Track model loading progress
     useEffect(() => {
@@ -299,44 +302,103 @@ export default function SimulationPage() {
 
 
     // Add this handler function:
+    const checkDroughtRisk = async () => {
+        // First, validate only the timelineController
+        if (!timelineController) {
+            console.warn("Cannot check drought risk: timeline controller not available");
+            return null;
+        }
+
+        try {
+            // Extract required environmental data from current day
+            const currentDay = timelineController.getCurrentDay();
+
+            // Add validation for the retrieved day data
+            if (!currentDay) {
+                console.warn("Cannot check drought risk: current day data not available");
+                return null;
+            }
+
+            // Map simulation data to drought risk API parameters
+            const requestData = {
+                // Extract rainfall data (convert from mm to appropriate units if necessary)
+                rainfall: currentDay.precipitation || 0,
+
+                // Estimate evaporation based on temperature and humidity
+                evaporation: calculateEvaporation(currentDay.temperature, currentDay.humidity),
+
+                // Get soil moisture (either from soil data or estimate it)
+                soilMoisture: currentDay.soilMoisture || 0.5, // Default to moderate soil moisture if not available
+
+                // Use average temperature for the calculation
+                temperature: typeof currentDay.temperature === 'object'
+                    ? ((currentDay.temperature.max + currentDay.temperature.min) / 2)
+                    : currentDay.temperature
+            };
+
+            console.log("Checking drought risk with parameters:", requestData);
+
+            // Call the drought-risk API
+            const response = await fetch('/api/drought-risk', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(requestData)
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`Drought risk API responded with status ${response.status}: ${errorText}`);
+            }
+
+            const riskData = await response.json();
+            console.log("Received drought risk assessment:", riskData);
+
+            if (riskData.success) {
+                // Store drought risk data for later use
+                setDroughtRiskAlert(riskData.data);
+
+                // If risk is higher than "No risk", show the alert
+                if (riskData.data.riskLevel !== 'No risk' && !droughtRiskShown) {
+                    setShowDroughtAlert(true);
+                }
+
+                setDroughtRiskShown(true);
+                return riskData.data;
+            } else {
+                console.error("Drought risk API error:", riskData.error);
+                return null;
+            }
+        } catch (error) {
+            console.error("Error checking drought risk:", error);
+            return null;
+        }
+    };
+
+    // Helper function to estimate evaporation based on temperature and humidity
+    const calculateEvaporation = (temperature, humidity) => {
+        // Default values if data is missing
+        const temp = typeof temperature === 'object'
+            ? ((temperature.max + temperature.min) / 2)
+            : (temperature || 25);
+        const hum = humidity || 50;
+
+        // Simple evaporation estimate based on temperature and inverse humidity
+        // This is a simplified model - real evaporation depends on many factors
+        // Higher temperature → higher evaporation
+        // Higher humidity → lower evaporation
+        const evapRate = (0.5 * temp * (100 - hum) / 100);
+
+        // Return evaporation rate with reasonable bounds (0.1-15 mm/day)
+        return Math.max(0.1, Math.min(15, evapRate));
+    };
+
+    // 3. Update the handleProductSelect function to check drought risk after successful product application
     const handleProductSelect = async (product) => {
         // Store selected product and close popup
         setSelectedProduct(product);
         setIsProductsPopupOpen(false);
-
-        // Validate timeline controller initialization
-        if (!timelineController) {
-            setErrorMessage("Cannot apply product: simulation timeline not initialized");
-            setTimeout(() => setErrorMessage(''), 5000);
-            return;
-        }
-
-        // Get current day index for validation
-        const currentDayIndex = timelineController.getCurrentDayIndex() + 1;
-
-        // DUPLICATE CHECK: Verify if this product was already applied on the current day
-        const alreadyAppliedProduct = appliedProducts.find(p =>
-            p.name === product.name && p.appliedAtDay === currentDayIndex
-        );
-
-        // If already applied today, show contextual message and prevent further processing
-        if (alreadyAppliedProduct) {
-            console.log(`Prevented duplicate application of ${product.name} on day ${currentDayIndex}`);
-
-            // Calculate time since last application for better user context
-            const minutesSinceApplication = alreadyAppliedProduct.appliedAt ?
-                Math.round((new Date() - new Date(alreadyAppliedProduct.appliedAt)) / (1000 * 60)) : 0;
-
-            // Provide specific, helpful feedback to the user
-            setErrorMessage(
-                `${product.name} has already been applied today (Day ${currentDayIndex})${minutesSinceApplication > 0 ? ` ${minutesSinceApplication} minutes ago` : ''
-                }. Please advance the timeline to apply it again.`
-            );
-
-            // Auto-clear error message
-            setTimeout(() => setErrorMessage(''), 5000);
-            return;
-        }
 
         // Clear any existing messages
         setErrorMessage('');
@@ -346,6 +408,19 @@ export default function SimulationPage() {
         setStatusMessage(`Applying ${product.name} to the simulation...`);
 
         try {
+            // Validation logic for preventing duplicate applications
+            const currentDayIndex = timelineController ? timelineController.getCurrentDayIndex() + 1 : 0;
+            const alreadyAppliedProduct = appliedProducts.find(p =>
+                p.name === product.name && p.appliedAtDay === currentDayIndex
+            );
+
+            if (alreadyAppliedProduct) {
+                setStatusMessage('');
+                setErrorMessage(`${product.name} has already been applied today (Day ${currentDayIndex}). Please advance the timeline to apply it again.`);
+                setTimeout(() => setErrorMessage(''), 5000);
+                return;
+            }
+
             // Call API to calculate and apply product effects
             const effectData = await applyProductEffect(product);
 
@@ -391,7 +466,10 @@ export default function SimulationPage() {
             // Auto-clear success message
             setTimeout(() => {
                 setSuccessMessage('');
-            }, 8000); // Slightly longer display time for success messages with observations
+            }, 8000);
+
+            // NEW: Check for drought risk after successful product application
+            await checkDroughtRisk();
 
         } catch (error) {
             // Error handling logic
@@ -850,6 +928,81 @@ export default function SimulationPage() {
                         >
                             ×
                         </button>
+                    </div>
+
+                )}
+
+                {/* Drought Risk Alert Modal */}
+                {showDroughtAlert && droughtRiskAlert && (
+                    <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+                        <div className="bg-white rounded-lg shadow-lg p-6 max-w-md w-full mx-4">
+                            <div className="flex justify-between items-start mb-4">
+                                <div className="flex items-center">
+                                    {/* Alert icon */}
+                                    <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center mr-3">
+                                        <svg className="w-6 h-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                                        </svg>
+                                    </div>
+                                    <h2 className="text-xl font-semibold text-gray-900">Drought Risk Alert</h2>
+                                </div>
+                                <button
+                                    className="text-gray-500 hover:text-gray-700"
+                                    onClick={() => setShowDroughtAlert(false)}
+                                >
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
+                                    </svg>
+                                </button>
+                            </div>
+
+                            <div className="bg-amber-50 border-l-4 border-amber-500 p-4 mb-4">
+                                <div className="flex">
+                                    <div className="ml-3">
+                                        <p className="text-sm text-amber-700">
+                                            <span className="font-medium">Risk Level: </span>
+                                            {droughtRiskAlert.riskLevel}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="mb-4">
+                                <h3 className="text-sm font-medium text-gray-900 mb-1">Recommendation:</h3>
+                                <p className="text-sm text-gray-600">{droughtRiskAlert.recommendation}</p>
+                            </div>
+
+                            <div className="bg-gray-50 p-3 rounded mb-4">
+                                <h3 className="text-sm font-medium text-gray-900 mb-2">Environmental Conditions:</h3>
+                                <div className="grid grid-cols-2 gap-2 text-xs">
+                                    <div>
+                                        <span className="text-gray-500">Rainfall:</span>
+                                        <span className="ml-1 font-medium">{droughtRiskAlert.inputs.rainfall} mm</span>
+                                    </div>
+                                    <div>
+                                        <span className="text-gray-500">Evaporation:</span>
+                                        <span className="ml-1 font-medium">{droughtRiskAlert.inputs.evaporation} mm</span>
+                                    </div>
+                                    <div>
+                                        <span className="text-gray-500">Soil Moisture:</span>
+                                        <span className="ml-1 font-medium">{droughtRiskAlert.inputs.soilMoisture}</span>
+                                    </div>
+                                    <div>
+                                        <span className="text-gray-500">Temperature:</span>
+                                        <span className="ml-1 font-medium">{droughtRiskAlert.inputs.temperature}°C</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="flex justify-end">
+                                <button
+                                    className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                                    onClick={() => setShowDroughtAlert(false)}
+                                >
+                                    Acknowledge
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 )}
 
