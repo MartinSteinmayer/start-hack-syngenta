@@ -38,6 +38,20 @@ interface TimelineController {
     _timeline?: { days: any[] };
 }
 
+interface ProductWithMetadata {
+    id: string; // Add unique ID for identification
+    name: string;
+    category: string;
+    appliedAt: Date;
+    appliedAtDay: number;
+    effect: {
+        growthRateIncrease: number;
+        yieldRisk: number;
+        observations: string;
+    };
+    [key: string]: any; // For other potential properties
+}
+
 // Define interfaces for simulation parameters
 interface SimulationParams {
     type: string;
@@ -73,20 +87,6 @@ interface DroughtRiskData {
         soilMoisture: number;
         temperature: number;
     };
-}
-
-// Interface for product metadata
-interface ProductWithMetadata {
-    name: string;
-    category: string;
-    appliedAt: Date;
-    appliedAtDay: number;
-    effect: {
-        growthRateIncrease: number;
-        yieldRisk: number;
-        observations: string;
-    };
-    [key: string]: any; // For other potential properties
 }
 
 // Interface for message details
@@ -517,9 +517,13 @@ export default function SimulationPage() {
                 throw new Error("Failed to calculate product effect");
             }
 
+            // Generate a unique ID for this product application
+            const uniqueId = Date.now().toString(36) + Math.random().toString(36).substr(2);
+
             // Add the product to applied products list with metadata
             const productWithMetadata: ProductWithMetadata = {
                 ...product,
+                id: uniqueId, // Add unique ID
                 appliedAt: new Date(),
                 appliedAtDay: currentDayIndex,
                 effect: {
@@ -552,7 +556,7 @@ export default function SimulationPage() {
                 isSuccess: true
             });
 
-            // NEW: Check for drought risk after successful product application
+            // Check for drought risk after successful product application
             await checkDroughtRisk();
 
             // Auto-clear success message
@@ -673,138 +677,60 @@ export default function SimulationPage() {
                 throw new Error(`API responded with status ${response.status}: ${errorText}`);
             }
 
-            if (timelineController && !timelineController.applyGrowthRateIncrease) {
-                console.log("Extending timelineController with applyGrowthRateIncrease method");
-
-                // Add the method directly to the controller object
-                timelineController.applyGrowthRateIncrease = function(growthRateIncrease: number, startDayIndex: number) {
-                    console.log(`Custom implementation: Applying growth rate increase of ${growthRateIncrease} starting from day ${startDayIndex}`);
-
-                    // Store the current day index to return to it
-                    const currentIndex = this.getCurrentDayIndex();
-                    const totalDays = this.getTotalDays();
-
-                    try {
-                        // Process each future day
-                        for (let i = startDayIndex; i < totalDays; i++) {
-                            // Navigate to this day
-                            this.setDay(i);
-
-                            // Get the current day data
-                            const day = this.getCurrentDay();
-
-                            if (day && day.growthFactor !== undefined) {
-                                // Calculate the new growth factor
-                                const originalFactor = day.growthFactor;
-                                const newFactor = Math.min(1.0, originalFactor * (1 + growthRateIncrease));
-
-                                // Update the day's properties directly
-                                day.growthFactor = newFactor;
-                                day.growthPercent = newFactor; // For backward compatibility
-
-                                // Update growth stage based on new factor
-                                // Simple determination based on common ranges
-                                if (day.growthStage) {
-                                    if (newFactor < 0.3) {
-                                        day.growthStage = "VEGETATIVE";
-                                    } else if (newFactor < 0.6) {
-                                        day.growthStage = "REPRODUCTIVE";
-                                    } else if (newFactor < 0.8) {
-                                        day.growthStage = "GRAIN_FILLING";
-                                    } else {
-                                        day.growthStage = "MATURITY";
-                                    }
-                                }
-
-                                console.log(`Day ${i}: Modified growth factor from ${originalFactor} to ${newFactor}`);
-                            }
-                        }
-
-                        // Return to the original day
-                        this.setDay(currentIndex);
-
-                        console.log("Successfully applied growth rate increase using custom method");
-                        return true;
-                    } catch (error) {
-                        console.error("Error in custom applyGrowthRateIncrease:", error);
-                        return false;
-                    }
-                };
-
-                console.log("TimelineController successfully extended with applyGrowthRateIncrease method");
-            }
-
             const data = await response.json();
             console.log("Received response from growth-rate API:", data);
 
-            // Apply the growth rate increase to the timeline
-            if (data.growth_rate_increase !== undefined) {
-                console.log(`Applying growth rate increase: ${data.growth_rate_increase}`);
+            // Check if timelineController has the new applyProduct method
+            if (timelineController.applyProduct && typeof timelineController.applyProduct === 'function') {
+                // Apply product using our enhanced method that leverages growth history
+                timelineController.applyProduct(
+                    product.id || `product_${Date.now()}`,
+                    product.name,
+                    data.growth_rate_increase,
+                    currentDayIndex
+                );
 
-                // FIXED: Improved approach to detect and use appropriate method
-                if (timelineController.applyGrowthRateIncrease && typeof timelineController.applyGrowthRateIncrease === 'function') {
-                    // Use the built-in method if available
-                    timelineController.applyGrowthRateIncrease(data.growth_rate_increase, currentDayIndex);
-                } else {
-                    // Fallback implementation with multiple access strategies
-                    console.warn("applyGrowthRateIncrease method not found, using fallback implementation");
+                console.log(`Successfully applied product ${product.name} with growth rate increase ${data.growth_rate_increase}`);
+            }
+            // Fallback to the old method if necessary
+            else if (timelineController.applyGrowthRateIncrease && typeof timelineController.applyGrowthRateIncrease === 'function') {
+                // Use the built-in method if available
+                timelineController.applyGrowthRateIncrease(data.growth_rate_increase, currentDayIndex);
 
-                    // Try multiple approaches to access timeline data
-                    let timelineDays = null;
+                console.log(`Fallback: Applied growth rate increase of ${data.growth_rate_increase} using applyGrowthRateIncrease`);
+            }
+            // Last resort fallback for older implementations
+            else {
+                console.warn("Neither applyProduct nor applyGrowthRateIncrease methods found, using manual approach");
 
-                    // Approach 1: Try to access through getTimeline method
-                    if (timelineController.getTimeline && typeof timelineController.getTimeline === 'function') {
-                        const timeline = timelineController.getTimeline();
-                        if (timeline && timeline.days) {
-                            timelineDays = timeline.days;
-                        }
+                // Try to access the days array
+                let timelineDays = null;
+
+                if (timelineController.getTimeline && typeof timelineController.getTimeline === 'function') {
+                    const timeline = timelineController.getTimeline();
+                    if (timeline && timeline.days) {
+                        timelineDays = timeline.days;
                     }
-
-                    // Approach 2: Try to access through getAllDays method
-                    if (!timelineDays && timelineController.getAllDays && typeof timelineController.getAllDays === 'function') {
-                        timelineDays = timelineController.getAllDays();
-                    }
-
-                    // Approach 3: Try to access through private _timeline property
-                    if (!timelineDays && timelineController._timeline && timelineController._timeline.days) {
-                        timelineDays = timelineController._timeline.days;
-                    }
-
-                    // Final check
-                    if (timelineDays && Array.isArray(timelineDays)) {
-                        // Apply growth rate increase to future days manually
-                        for (let i = currentDayIndex; i < timelineDays.length; i++) {
-                            const day = timelineDays[i];
-
-                            if (day.growthFactor !== undefined) {
-                                // Calculate new growth factor with the increase
-                                const originalGrowthFactor = day.growthFactor;
-                                const newGrowthFactor = Math.min(1.0, originalGrowthFactor * (1 + data.growth_rate_increase));
-
-                                // Update the day's growth factor and percent
-                                day.growthFactor = newGrowthFactor;
-                                day.growthPercent = newGrowthFactor; // For backward compatibility
-
-                                // Update growth stage if the determineGrowthStage function is available
-                                if (typeof window !== 'undefined' && 'determineGrowthStage' in window && typeof window.determineGrowthStage === 'function') {
-                                    // @ts-ignore - Safely use the global function if available
-                                    day.growthStage = window.determineGrowthStage(newGrowthFactor);
-                                }
-                            }
-                        }
-
-                        // Refresh the current day
-                        if (typeof timelineController.setDay === 'function') {
-                            timelineController.setDay(currentDayIndex);
-                        }
-
-                        console.log(`Successfully applied growth rate increase using fallback implementation.`);
-                    } else {
-                        throw new Error("Unable to access timeline data using any available method");
-                    }
+                } else if (timelineController.getAllDays && typeof timelineController.getAllDays === 'function') {
+                    timelineDays = timelineController.getAllDays();
                 }
-            } else {
-                console.warn("API response missing growth_rate_increase value");
+
+                if (timelineDays && Array.isArray(timelineDays)) {
+                    // Apply growth rate increase manually
+                    for (let i = currentDayIndex; i < timelineDays.length; i++) {
+                        const day = timelineDays[i];
+
+                        if (day.growthFactor !== undefined) {
+                            day.growthFactor = Math.min(1.0, day.growthFactor * (1 + data.growth_rate_increase));
+                            day.growthPercent = day.growthFactor;
+                        }
+                    }
+
+                    // Refresh display
+                    timelineController.setDay(currentDayIndex);
+
+                    console.log(`Legacy fallback: Modified growth factors directly in timeline days`);
+                }
             }
 
             // Return the complete API response
@@ -812,6 +738,116 @@ export default function SimulationPage() {
         } catch (error) {
             console.error('Error applying product effect:', error);
             throw error;
+        }
+    };
+
+    const handleRemoveProduct = async (product: ProductWithMetadata, appliedDay: number) => {
+        try {
+            // Show status message during processing
+            setStatusMessage(`Removing ${product.name} from simulation...`);
+
+            // First, remove product from the appliedProducts array
+            setAppliedProducts(prev => prev.filter(p => p.id !== product.id));
+
+            // Check if timelineController exists with required navigation methods
+            if (!timelineController || !timelineController.getCurrentDayIndex ||
+                !timelineController.getTotalDays || !timelineController.setDay ||
+                !timelineController.getCurrentDay) {
+                console.warn("Timeline controller missing required methods");
+                setStatusMessage('');
+                setSuccessMessage(`Removed ${product.name} from product list, but couldn't update simulation.`);
+                return;
+            }
+
+            // Get current position to restore view later
+            const currentPosition = timelineController.getCurrentDayIndex();
+            const totalDays = timelineController.getTotalDays();
+
+            // Calculate reversal factor
+            const originalIncrease = product.effect?.growthRateIncrease || 0;
+            const reverseGrowthRate = -originalIncrease / (1 + originalIncrease);
+
+            console.log(`Attempting day-by-day reversal: original +${originalIncrease}, reversal factor ${reverseGrowthRate}`);
+
+            // Track success
+            let modifiedDays = 0;
+
+            // Implement day-by-day modification using available navigation methods
+            for (let dayIndex = appliedDay; dayIndex < totalDays; dayIndex++) {
+                // Navigate to this day
+                timelineController.setDay(dayIndex);
+
+                // Get current day data
+                const dayData = timelineController.getCurrentDay();
+
+                // Skip if day data doesn't have growthFactor
+                if (!dayData || dayData.growthFactor === undefined) continue;
+
+                try {
+                    // Create a direct reference to modify the object properties
+                    // This works because JavaScript objects are passed by reference
+                    const currentGrowthFactor = dayData.growthFactor;
+                    const newGrowthFactor = Math.max(0, Math.min(1, currentGrowthFactor * (1 + reverseGrowthRate)));
+
+                    // Update directly
+                    dayData.growthFactor = newGrowthFactor;
+                    dayData.growthPercent = newGrowthFactor;
+
+                    // Update growth stage if possible
+                    if (newGrowthFactor < 0.3) {
+                        dayData.growthStage = 'SEEDLING';
+                    } else if (newGrowthFactor < 0.6) {
+                        dayData.growthStage = 'VEGETATIVE';
+                    } else if (newGrowthFactor < 0.9) {
+                        dayData.growthStage = 'REPRODUCTIVE';
+                    } else {
+                        dayData.growthStage = 'MATURE';
+                    }
+
+                    modifiedDays++;
+                } catch (dayError) {
+                    console.warn(`Failed to modify day ${dayIndex}:`, dayError);
+                }
+            }
+
+            // Return to original position
+            timelineController.setDay(currentPosition);
+
+            // Clear status message
+            setStatusMessage('');
+
+            // Show appropriate feedback based on success
+            if (modifiedDays > 0) {
+                console.log(`Successfully modified ${modifiedDays} days`);
+                setSuccessMessage(`Removed ${product.name} and reversed its effects on crop growth.`);
+                setMessageDetails({
+                    growthRate: 0,
+                    observations: `Modified ${modifiedDays} days to show crop development without ${product.name}.`,
+                    isSuccess: true
+                });
+            } else {
+                setSuccessMessage(`Removed ${product.name} from product list.`);
+                setMessageDetails({
+                    growthRate: 0,
+                    observations: `Could not modify simulation data, but the product has been removed from tracking.`,
+                    isSuccess: true
+                });
+            }
+
+            // Auto-clear success message
+            setTimeout(() => {
+                setSuccessMessage('');
+            }, 5000);
+
+        } catch (error) {
+            console.error('Error removing product:', error);
+            setStatusMessage('');
+            setErrorMessage(`Error removing ${product.name}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+
+            // Auto-clear error message
+            setTimeout(() => {
+                setErrorMessage('');
+            }, 5000);
         }
     };
 
@@ -875,7 +911,7 @@ export default function SimulationPage() {
                     onSelectProduct={handleProductSelect}
                 />
 
-                {/* Enhanced Applied Products Display with day-specific organization */}
+                {/* Enhanced Applied Products Display with remove button */}
                 {appliedProducts.length > 0 && (
                     <div className="absolute bottom-[250px] right-4 z-20 bg-white bg-opacity-95 p-4 rounded-lg shadow-lg max-w-xs">
                         <h3 className="font-medium text-green-700 mb-2">Applied Products</h3>
@@ -922,6 +958,17 @@ export default function SimulationPage() {
                                                                     </div>
                                                                 </div>
                                                             )}
+
+                                                            {/* Remove button */}
+                                                            <button
+                                                                onClick={() => handleRemoveProduct(product, Number(day))}
+                                                                className="mt-2 text-xs text-red-600 hover:text-red-800 flex items-center"
+                                                            >
+                                                                <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                                                </svg>
+                                                                Remove
+                                                            </button>
                                                         </div>
                                                     </div>
                                                 </li>
