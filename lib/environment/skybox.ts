@@ -4,7 +4,7 @@ import * as THREE from 'three';
  * Creates skybox with distant horizons
  * @param {THREE.Scene} scene - The THREE.js scene
  */
-export const createSkybox = (scene) => {
+export const createSkybox = (scene : any) => {
   // Sky dome
   const skyGeo = new THREE.SphereGeometry(1000, 32, 32);
   const skyMat = new THREE.MeshBasicMaterial({
@@ -22,6 +22,10 @@ export const createSkybox = (scene) => {
   canvas.width = 1024;
   canvas.height = 128;
   const ctx = canvas.getContext('2d');
+  
+  if (!ctx) {
+    throw new Error("Failed to get 2D rendering context");
+  }
   
   // Draw gradient sky
   const gradientSky = ctx.createLinearGradient(0, 0, 0, 128);

@@ -1,4 +1,9 @@
-import { PLANT_HEIGHTS, SCALE_FACTOR, getRandomizedHeight } from './constants';
+import { 
+  PLANT_HEIGHTS, 
+  SCALE_FACTOR, 
+  getRandomizedHeight,
+  CropType // Import the CropType for type safety
+} from './constants';
 import { loadModel, getCropModelPaths } from '../services/modelLoader';
 import * as THREE from 'three';
 
@@ -9,16 +14,41 @@ import createSoybeanPlant from './soybean';
 import createCottonPlant from './cotton';
 import createRicePlant from './rice';
 
+// Type definition for model paths
+type CropModelPaths = Record<CropType, string>;
+
 // Get model paths
-const cropModelPaths = getCropModelPaths();
+const cropModelPaths: CropModelPaths = getCropModelPaths() as CropModelPaths;
 
 // Track loading status
 let modelsPreloaded = false;
 
 /**
+ * Checks if a string is a valid crop type
+ * @param type - The crop type to check
+ * @returns True if the string is a valid CropType
+ */
+function isValidCropType(type: string): type is CropType {
+  return ['corn', 'wheat', 'soybean', 'cotton', 'rice'].includes(type);
+}
+
+/**
+ * Gets a safe crop height value with fallback
+ * @param type - The crop type
+ * @returns The height value or a default
+ */
+function getSafeCropHeight(type: string): number {
+  if (isValidCropType(type)) {
+    return PLANT_HEIGHTS[type];
+  }
+  // Default height if not a valid crop type
+  return 1.0;
+}
+
+/**
  * Preload all crop models - call this at app initialization
  */
-export const preloadCropModels = async () => {
+export const preloadCropModels = async (): Promise<void> => {
   try {
     const modelPaths = Object.values(cropModelPaths);
     for (const path of modelPaths) {
@@ -34,14 +64,14 @@ export const preloadCropModels = async () => {
 /**
  * Creates a plant based on type and positions it at the specified coordinates
  * Uses 3D models when available, falls back to geometry-based models if needed
- * @param {string} type - Type of crop
- * @param {number} x - X coordinate
- * @param {number} z - Z coordinate
- * @returns {THREE.Group} - The created plant 3D object
+ * @param type - Type of crop
+ * @param x - X coordinate
+ * @param z - Z coordinate
+ * @returns The created plant 3D object
  */
 export const createPlant = async (type: string, x: number, z: number): Promise<THREE.Group> => {
   // Get base height for the plant type and apply scale factor
-  const baseHeight = PLANT_HEIGHTS[type] * SCALE_FACTOR;
+  const baseHeight = getSafeCropHeight(type) * SCALE_FACTOR;
   
   // Apply natural variation to the height
   const actualHeight = getRandomizedHeight(baseHeight);
@@ -60,7 +90,7 @@ export const createPlant = async (type: string, x: number, z: number): Promise<T
   
   try {
     // Try to load the 3D model for this crop type
-    if (cropModelPaths[type]) {
+    if (isValidCropType(type) && cropModelPaths[type]) {
       const model = await loadModel(cropModelPaths[type]);
       
       // Scale model appropriately based on desired height
@@ -194,15 +224,17 @@ function tagPlantParts(plantGroup: THREE.Group, cropType: string) {
   });
 }
 
-// Create a synchronous version for the simulation setup
-// This will use a placeholder if the model isn't loaded yet
+/**
+ * Create a synchronous version for the simulation setup
+ * This will use a placeholder if the model isn't loaded yet
+ */
 export const createPlantSync = (type: string, x: number, z: number): THREE.Group => {
   const plantGroup = new THREE.Group();
   plantGroup.position.set(x, 0, z);
   plantGroup.rotation.y = Math.random() * Math.PI * 2;
   plantGroup.userData.isPlant = true;
   plantGroup.userData.cropType = type;
-  plantGroup.userData.baseHeight = PLANT_HEIGHTS[type] * SCALE_FACTOR;
+  plantGroup.userData.baseHeight = getSafeCropHeight(type) * SCALE_FACTOR;
   plantGroup.userData.pendingModelLoad = true;
   
   // Create a simple placeholder

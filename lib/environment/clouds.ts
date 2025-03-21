@@ -6,7 +6,7 @@ import * as THREE from 'three';
  * @param {number} count - Number of clouds to create
  * @returns {Array} - Array of cloud objects
  */
-export const createClouds = (scene, count = 20) => {
+export const createClouds = (scene : any, count = 20) => {
   const clouds = [];
   
   for (let i = 0; i < count; i++) {
@@ -56,12 +56,12 @@ export const createClouds = (scene, count = 20) => {
  * Updates cloud positions for animation
  * @param {Array} clouds - Array of cloud objects
  */
-export const animateClouds = (clouds) => {
+export const animateClouds = (clouds : any) => {
   if (clouds.length > 0) {
-    clouds.forEach(cloud => {
+    clouds.forEach((cloud: THREE.Group) => {
       cloud.position.x += cloud.userData.speed;
       if (cloud.position.x > 200) {
-        cloud.position.x = -200;
+      cloud.position.x = -200;
       }
     });
   }

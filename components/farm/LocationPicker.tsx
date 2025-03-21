@@ -64,6 +64,14 @@ export default function LocationPicker({ value, onChange, className = '' }: Loca
         setSearchQuery('');
     };
 
+    // Handler for location selection from the map
+    const handleLocationSelect = (lat: number, lng: number) => {
+        onChange({
+            lat,
+            lng
+        });
+    };
+
     return (
         <div className={`flex flex-col ${className}`}>
             {/* Search Component */}
@@ -106,8 +114,12 @@ export default function LocationPicker({ value, onChange, className = '' }: Loca
             </div>
 
             {/* Map Component - Dynamically loaded on client-side only */}
-            <MapComponentWithNoSSR location={value} onLocationChange={onChange} />
-
+            <MapComponentWithNoSSR 
+                latitude={value.lat} 
+                longitude={value.lng} 
+                onLocationSelect={handleLocationSelect}
+                className="h-64"
+            />
         </div>
     );
 }

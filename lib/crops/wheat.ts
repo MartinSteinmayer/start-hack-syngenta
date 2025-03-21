@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 
-const createWheatPlant = (plantHeight) => {
+const createWheatPlant = (plantHeight : any) => {
   const plantGroup = new THREE.Group();
   
   // Wheat stalk

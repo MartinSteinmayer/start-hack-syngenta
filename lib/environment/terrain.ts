@@ -4,7 +4,7 @@ import * as THREE from 'three';
  * Creates terrain with ground planes and boundaries
  * @param {THREE.Scene} scene - The THREE.js scene
  */
-export const createTerrain = (scene) => {
+export const createTerrain = (scene : any) => {
     const terrainObjects = [];
 
     // Large ground plane (distant terrain)
@@ -61,7 +61,7 @@ export const createTerrain = (scene) => {
  * @param {Array} vertices - Array of vertices defining the field
  * @returns {THREE.Mesh} - The created soil mesh
  */
-export const createFieldSoil = (scene, vertices) => {
+export const createFieldSoil = (scene : any, vertices : any) => {
     // Create a 2D shape from the vertices
     const shape = new THREE.Shape();
 
@@ -98,7 +98,7 @@ export const createFieldSoil = (scene, vertices) => {
  * @param {Array} vertices - Array of vertices defining the field boundary
  * @returns {THREE.Line} - The created boundary line
  */
-export const createFieldBoundary = (scene, vertices) => {
+export const createFieldBoundary = (scene : any, vertices : any) => {
     const borderMat = new THREE.LineBasicMaterial({
         color: 0x000000,
         linewidth: 2

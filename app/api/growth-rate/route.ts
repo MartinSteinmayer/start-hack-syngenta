@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
 import OpenAI from 'openai';
+import { ChatCompletionMessageParam } from 'openai/resources';
 import dotenv from 'dotenv';
 import { parse } from 'csv-parse/sync';
 dotenv.config();
@@ -44,11 +45,10 @@ interface CropOptimalData {
     n_optimal: number;
 }
 
-// Maintain OpenAI client and conversation history
 class OpenAIService {
     private static instance: OpenAIService;
     private openai: OpenAI;
-    private conversationHistory: Array<{ role: string, content: string }> = [];
+    private conversationHistory: ChatCompletionMessageParam[] = [];
     private isInitialized = false;
     private cropGddData: CropGddData[] = [];
     private cropOptimalData: CropOptimalData[] = [];

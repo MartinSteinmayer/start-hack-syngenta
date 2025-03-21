@@ -16,62 +16,143 @@ import { convertGeoPolygonTo3D, parsePolygonFromUrl } from '@/lib/utils/coordina
 import SeasonTimelineControls from './components/SeasonTimelineControls';
 import ProductsPopup from './components/ProductsPopup';
 import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import Image from 'next/image';
+
+// Define types for the timeline controller
+interface TimelineController {
+    getCurrentDay: () => any;
+    getCurrentDayIndex: () => number;
+    getTotalDays: () => number;
+    setDay: (dayIndex: number) => void;
+    nextDay: () => void;
+    prevDay: () => void;
+    isPaused: () => boolean;
+    play: () => void;
+    pause: () => void;
+    setSpeed: (speedFactor: number) => void;
+    cleanup: () => void;
+    applyGrowthRateIncrease?: (growthRateIncrease: number, startDayIndex: number) => boolean;
+    getTimeline?: () => any;
+    getAllDays?: () => any[];
+    _timeline?: { days: any[] };
+}
+
+// Define interfaces for simulation parameters
+interface SimulationParams {
+    type: string;
+    hectares: number;
+    density: number;
+    polygon: [number, number, number][];
+    location: {
+        latitude: number;
+        longitude: number;
+        name: string;
+    };
+    weatherSettings: {
+        useRealWeather: boolean;
+    };
+}
+
+// Interface for location data
+interface LocationData {
+    latitude: number;
+    longitude: number;
+    name: string;
+}
+
+// Interface for the drought risk alert data
+interface DroughtRiskData {
+    droughtIndex: number;
+    riskLevel: string;
+    recommendation: string;
+    warning: string | null;
+    inputs: {
+        rainfall: number;
+        evaporation: number;
+        soilMoisture: number;
+        temperature: number;
+    };
+}
+
+// Interface for product metadata
+interface ProductWithMetadata {
+    name: string;
+    category: string;
+    appliedAt: Date;
+    appliedAtDay: number;
+    effect: {
+        growthRateIncrease: number;
+        yieldRisk: number;
+        observations: string;
+    };
+    [key: string]: any; // For other potential properties
+}
+
+// Interface for message details
+interface MessageDetails {
+    growthRate: number;
+    observations: string;
+    isSuccess: boolean;
+}
 
 export default function SimulationPage() {
     // Get URL params
     const searchParams = useSearchParams();
 
     // Reference to the 3D container
-    const mountRef = useRef(null);
-    const fileInputRef = useRef(null);
+    const mountRef = useRef<HTMLDivElement>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
-    // Refs to hold three.js objects
-    const sceneRef = useRef(null);
-    const cameraRef = useRef(null);
-    const controlsRef = useRef(null);
-    const rendererRef = useRef(null);
-    const cloudsRef = useRef([]);
-    const simulationObjectsRef = useRef([]);
-    const lightRefs = useRef({
+    // Refs to hold three.js objects with appropriate types
+    const sceneRef = useRef<THREE.Scene | null>(null);
+    const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
+    const controlsRef = useRef<OrbitControls | null>(null);
+    const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
+    const cloudsRef = useRef<THREE.Group[]>([]);
+    const simulationObjectsRef = useRef<(THREE.Object3D | THREE.Group | THREE.Mesh | THREE.Line)[]>([]);
+    const lightRefs = useRef<{
+        directional: THREE.DirectionalLight | null;
+        ambient: THREE.AmbientLight | null;
+    }>({
         directional: null,
         ambient: null
     });
 
     // Current simulation state
-    const [currentSimulation, setCurrentSimulation] = useState(null);
-    const [errorMessage, setErrorMessage] = useState('');
-    const [isLoading, setIsLoading] = useState(false);
-    const [showSidebar, setShowSidebar] = useState(false);
+    const [currentSimulation, setCurrentSimulation] = useState<SimulationParams | null>(null);
+    const [errorMessage, setErrorMessage] = useState<string>('');
+    const [isLoading, setIsLoading] = useState<boolean>(false);
+    const [showSidebar, setShowSidebar] = useState<boolean>(false);
 
     // Model loading state
-    const [modelLoadingProgress, setModelLoadingProgress] = useState(0);
-    const [modelsLoaded, setModelsLoaded] = useState(false);
+    const [modelLoadingProgress, setModelLoadingProgress] = useState<number>(0);
+    const [modelsLoaded, setModelsLoaded] = useState<boolean>(false);
 
     // Timeline state
-    const [timelineController, setTimelineController] = useState(null);
-    const [dayInfo, setDayInfo] = useState(null);
-    const [totalDays, setTotalDays] = useState(90); // Default 3 months
+    const [timelineController, setTimelineController] = useState<TimelineController | null>(null);
+    const [dayInfo, setDayInfo] = useState<any>(null);
+    const [totalDays, setTotalDays] = useState<number>(90); // Default 3 months
 
     // Location state
-    const [location, setLocation] = useState(null);
+    const [location, setLocation] = useState<LocationData | null>(null);
 
     // Products popup state
-    const [isProductsPopupOpen, setIsProductsPopupOpen] = useState(false);
-    const [selectedProduct, setSelectedProduct] = useState(null);
-    const [appliedProducts, setAppliedProducts] = useState<any[]>([]);
+    const [isProductsPopupOpen, setIsProductsPopupOpen] = useState<boolean>(false);
+    const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
+    const [appliedProducts, setAppliedProducts] = useState<ProductWithMetadata[]>([]);
 
     // Message alerts
-    const [successMessage, setSuccessMessage] = useState('');
-    const [messageDetails, setMessageDetails] = useState({
+    const [successMessage, setSuccessMessage] = useState<string>('');
+    const [messageDetails, setMessageDetails] = useState<MessageDetails>({
         growthRate: 0,
         observations: '',
         isSuccess: true
     });
-    const [statusMessage, setStatusMessage] = useState('');
-    const [droughtRiskAlert, setDroughtRiskAlert] = useState(null);
-    const [showDroughtAlert, setShowDroughtAlert] = useState(false);
-    const [droughtRiskShown, setDroughtRiskShown] = useState(false);
+    const [statusMessage, setStatusMessage] = useState<string>('');
+    const [droughtRiskAlert, setDroughtRiskAlert] = useState<DroughtRiskData | null>(null);
+    const [showDroughtAlert, setShowDroughtAlert] = useState<boolean>(false);
+    const [droughtRiskShown, setDroughtRiskShown] = useState<boolean>(false);
 
     // Track model loading progress
     useEffect(() => {
@@ -130,7 +211,7 @@ export default function SimulationPage() {
             directional: directionalLight,
             ambient: ambientLight
         };
-
+        
         // Create environment
         createSkybox(scene);
         createTerrain(scene);
@@ -164,17 +245,17 @@ export default function SimulationPage() {
         animate();
 
         // Load simulation based on URL params if available
-        const latitude = parseFloat(searchParams.get('lat')) || -12.915559;
-        const longitude = parseFloat(searchParams.get('lng')) || -55.314216;
-        const hectares = parseFloat(searchParams.get('hectares')) || 350;
+        const latitude = parseFloat(searchParams.get('lat') || '-12.915559');
+        const longitude = parseFloat(searchParams.get('lng') || '-55.314216');
+        const hectares = parseFloat(searchParams.get('hectares') || '350');
         const crop = searchParams.get('crop') || 'corn';
         const polygonParam = searchParams.get('polygon');
 
         // Parse the polygon from URL
-        const geoPolygon = parsePolygonFromUrl(polygonParam);
+        const geoPolygon = parsePolygonFromUrl(polygonParam || '');
 
         // Create the farm location object
-        const farmLocation = {
+        const farmLocation: LocationData = {
             latitude,
             longitude,
             name: searchParams.get('locationName') || 'Mato Grosso (Brazil)'
@@ -184,7 +265,7 @@ export default function SimulationPage() {
         const polygon3D = convertGeoPolygonTo3D(geoPolygon, farmLocation);
 
         // Create the simulation parameters
-        const simParams = {
+        const simParams: SimulationParams = {
             type: crop,
             hectares: Math.min(hectares, 1000), // Cap at 1000 hectares for performance
             density: hectares > 100 ? 50 : hectares > 50 ? 75 : 100, // Adjust density based on farm size
@@ -215,8 +296,14 @@ export default function SimulationPage() {
             scene.traverse((object) => {
                 if (object instanceof THREE.Mesh) {
                     object.geometry.dispose();
-                    if (object.material.map) object.material.map.dispose();
-                    object.material.dispose();
+                    if (object.material instanceof THREE.Material) {
+                        if ('map' in object.material && object.material.map instanceof THREE.Texture) {
+                            object.material.map.dispose();
+                        }
+                        object.material.dispose();
+                    } else if (Array.isArray(object.material)) {
+                        object.material.forEach(material => material.dispose());
+                    }
                 }
             });
         };
@@ -233,7 +320,9 @@ export default function SimulationPage() {
             try {
                 // Remove all existing simulation objects
                 simulationObjectsRef.current.forEach(object => {
-                    sceneRef.current.remove(object);
+                    if (sceneRef.current) {
+                        sceneRef.current.remove(object);
+                    }
                 });
                 simulationObjectsRef.current = [];
 
@@ -285,15 +374,15 @@ export default function SimulationPage() {
                         setDayInfo
                     );
 
-                    setTimelineController(controller);
+                    setTimelineController(controller as TimelineController);
                     setErrorMessage('');
-                } else {
+                } else if (error) {
                     console.error('Simulation error:', error);
                     setErrorMessage(`Error creating simulation: ${error}`);
                 }
             } catch (err) {
                 console.error('Unexpected error in simulation creation:', err);
-                setErrorMessage(`Unexpected error: ${err.message}`);
+                setErrorMessage(`Unexpected error: ${err instanceof Error ? err.message : 'Unknown error'}`);
             } finally {
                 setIsLoading(false);
             }
@@ -377,7 +466,7 @@ export default function SimulationPage() {
     };
 
     // Helper function to estimate evaporation based on temperature and humidity
-    const calculateEvaporation = (temperature, humidity) => {
+    const calculateEvaporation = (temperature: any, humidity: any): number => {
         // Default values if data is missing
         const temp = typeof temperature === 'object'
             ? ((temperature.max + temperature.min) / 2)
@@ -395,7 +484,7 @@ export default function SimulationPage() {
     };
 
     // 3. Update the handleProductSelect function to check drought risk after successful product application
-    const handleProductSelect = async (product) => {
+    const handleProductSelect = async (product: any) => {
         // Store selected product and close popup
         setSelectedProduct(product);
         setIsProductsPopupOpen(false);
@@ -417,7 +506,7 @@ export default function SimulationPage() {
             if (alreadyAppliedProduct) {
                 setStatusMessage('');
                 setErrorMessage(`${product.name} has already been applied today (Day ${currentDayIndex}). Please advance the timeline to apply it again.`);
-                setTimeout(() => setErrorMessage(''), 5000);
+                setTimeout(() => setErrorMessage(''), 10000);
                 return;
             }
 
@@ -429,7 +518,7 @@ export default function SimulationPage() {
             }
 
             // Add the product to applied products list with metadata
-            const productWithMetadata = {
+            const productWithMetadata: ProductWithMetadata = {
                 ...product,
                 appliedAt: new Date(),
                 appliedAtDay: currentDayIndex,
@@ -463,13 +552,13 @@ export default function SimulationPage() {
                 isSuccess: true
             });
 
+            // NEW: Check for drought risk after successful product application
+            await checkDroughtRisk();
+
             // Auto-clear success message
             setTimeout(() => {
                 setSuccessMessage('');
-            }, 8000);
-
-            // NEW: Check for drought risk after successful product application
-            await checkDroughtRisk();
+            }, 10000);
 
         } catch (error) {
             // Error handling logic
@@ -479,15 +568,15 @@ export default function SimulationPage() {
             setStatusMessage('');
 
             // Set error message
-            setErrorMessage(`Error applying ${product.name}: ${error.message}`);
+            setErrorMessage(`Error applying ${product.name}: ${error instanceof Error ? error.message : 'Unknown error'}`);
 
             // Auto-clear error message
-            setTimeout(() => setErrorMessage(''), 5000);
+            setTimeout(() => setErrorMessage(''), 10000);
         }
     };
 
     // Updated applyProductEffect function with robust timeline access
-    const applyProductEffect = async (product) => {
+    const applyProductEffect = async (product: any) => {
         if (!timelineController || !currentSimulation || !location) {
             console.error("Required simulation components not initialized");
             return null;
@@ -588,7 +677,7 @@ export default function SimulationPage() {
                 console.log("Extending timelineController with applyGrowthRateIncrease method");
 
                 // Add the method directly to the controller object
-                timelineController.applyGrowthRateIncrease = function(growthRateIncrease, startDayIndex) {
+                timelineController.applyGrowthRateIncrease = function(growthRateIncrease: number, startDayIndex: number) {
                     console.log(`Custom implementation: Applying growth rate increase of ${growthRateIncrease} starting from day ${startDayIndex}`);
 
                     // Store the current day index to return to it
@@ -653,7 +742,7 @@ export default function SimulationPage() {
                 console.log(`Applying growth rate increase: ${data.growth_rate_increase}`);
 
                 // FIXED: Improved approach to detect and use appropriate method
-                if (typeof timelineController.applyGrowthRateIncrease === 'function') {
+                if (timelineController.applyGrowthRateIncrease && typeof timelineController.applyGrowthRateIncrease === 'function') {
                     // Use the built-in method if available
                     timelineController.applyGrowthRateIncrease(data.growth_rate_increase, currentDayIndex);
                 } else {
@@ -664,7 +753,7 @@ export default function SimulationPage() {
                     let timelineDays = null;
 
                     // Approach 1: Try to access through getTimeline method
-                    if (typeof timelineController.getTimeline === 'function') {
+                    if (timelineController.getTimeline && typeof timelineController.getTimeline === 'function') {
                         const timeline = timelineController.getTimeline();
                         if (timeline && timeline.days) {
                             timelineDays = timeline.days;
@@ -672,7 +761,7 @@ export default function SimulationPage() {
                     }
 
                     // Approach 2: Try to access through getAllDays method
-                    if (!timelineDays && typeof timelineController.getAllDays === 'function') {
+                    if (!timelineDays && timelineController.getAllDays && typeof timelineController.getAllDays === 'function') {
                         timelineDays = timelineController.getAllDays();
                     }
 
@@ -697,7 +786,8 @@ export default function SimulationPage() {
                                 day.growthPercent = newGrowthFactor; // For backward compatibility
 
                                 // Update growth stage if the determineGrowthStage function is available
-                                if (window.determineGrowthStage) {
+                                if (typeof window !== 'undefined' && 'determineGrowthStage' in window && typeof window.determineGrowthStage === 'function') {
+                                    // @ts-ignore - Safely use the global function if available
                                     day.growthStage = window.determineGrowthStage(newGrowthFactor);
                                 }
                             }
@@ -793,8 +883,8 @@ export default function SimulationPage() {
                         {/* Group products by application day for better organization */}
                         {(() => {
                             // Create a map of day → products
-                            const productsByDay = appliedProducts.reduce((acc, product) => {
-                                const day = product.appliedAtDay || '?';
+                            const productsByDay = appliedProducts.reduce<Record<string, ProductWithMetadata[]>>((acc, product) => {
+                                const day = String(product.appliedAtDay || '?');
                                 if (!acc[day]) acc[day] = [];
                                 acc[day].push(product);
                                 return acc;
@@ -802,7 +892,7 @@ export default function SimulationPage() {
 
                             // Sort days in descending order (most recent first)
                             return Object.keys(productsByDay)
-                                .sort((a, b) => b - a)
+                                .sort((a, b) => Number(b) - Number(a))
                                 .map(day => (
                                     <div key={day} className="mb-3 last:mb-0">
                                         <div className="text-xs font-medium text-gray-500 mb-1 border-b border-gray-100">

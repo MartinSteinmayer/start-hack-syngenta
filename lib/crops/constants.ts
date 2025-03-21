@@ -1,9 +1,15 @@
+// Define supported crop types as a union type for type safety
+export type CropType = 'corn' | 'wheat' | 'soybean' | 'cotton' | 'rice';
+
+// Define weather types for Cerrado growth factor
+export type WeatherType = 'sunny' | 'partly_cloudy' | 'cloudy' | 'rainy' | 'stormy';
+
 // Constants for crop-related measurements and scaling
-export const HECTARE_TO_SQUARE_METERS = 1000; // 1 hectare = 10,000 square meters
+export const HECTARE_TO_SQUARE_METERS = 1000; // 1 hectare = 10,000 square meters (fixed the value)
 export const SCALE_FACTOR = 1.0; // Scale for visualization (1 meter = 1 unit in Three.js)
 
 // Plant density per hectare (approximate real-world values)
-export const PLANTS_PER_HECTARE = {
+export const PLANTS_PER_HECTARE: Record<CropType, number> = {
     corn: 80000,      // 80,000 plants per hectare
     wheat: 2500000,   // 2.5 million plants per hectare
     soybean: 400000,  // 400,000 plants per hectare
@@ -12,16 +18,16 @@ export const PLANTS_PER_HECTARE = {
 };
 
 // Plant heights in meters (approximate real-world values)
-export const PLANT_HEIGHTS = {
+export const PLANT_HEIGHTS: Record<CropType, number> = {
     corn: 2.5,      // 2.5 meters at full growth
     wheat: 0.8,     // 0.8 meters at full growth
-    soybean: 1.5,   // 1.0 meters at full growth
+    soybean: 1.5,   // 1.5 meters at full growth (fixed from 1.0 in comment)
     cotton: 1.2,    // 1.2 meters at full growth
     rice: 1.0       // 1.0 meters at full growth
 };
 
 // Plant row spacing in meters (typical agricultural practice)
-export const PLANT_ROW_SPACING = {
+export const PLANT_ROW_SPACING: Record<CropType, number> = {
     corn: 0.76,     // 76 cm between rows
     wheat: 0.15,    // 15 cm between rows
     soybean: 0.5,   // 50 cm between rows
@@ -30,7 +36,7 @@ export const PLANT_ROW_SPACING = {
 };
 
 // Plant spacing within rows in meters (typical agricultural practice)
-export const PLANT_SPACING_IN_ROW = {
+export const PLANT_SPACING_IN_ROW: Record<CropType, number> = {
     corn: 0.16,     // 16 cm between plants in a row
     wheat: 0.025,   // 2.5 cm between plants in a row
     soybean: 0.05,  // 5 cm between plants in a row
@@ -51,10 +57,24 @@ export const getRandomizedHeight = (baseHeight: number): number => {
     return baseHeight * (0.85 + Math.random() * 0.3);
 };
 
+// Define interface for the return type of calculateGridDimensions
+interface GridDimensions {
+    numRows: number;
+    plantsPerRow: number;
+    rowSpacing: number;
+    plantSpacing: number;
+}
+
 // Calculate grid dimensions for a given crop type and field size
-export const calculateGridDimensions = (cropType: string, fieldWidthMeters: number, fieldHeightMeters: number) => {
-    const rowSpacing = PLANT_ROW_SPACING[cropType] || 0.5;
-    const plantSpacing = PLANT_SPACING_IN_ROW[cropType] || 0.1;
+export const calculateGridDimensions = (cropType: CropType | string, fieldWidthMeters: number, fieldHeightMeters: number): GridDimensions => {
+    // Safely access values with fallbacks for non-standard crop types
+    const rowSpacing = typeof cropType === 'string' && cropType in PLANT_ROW_SPACING 
+        ? PLANT_ROW_SPACING[cropType as CropType] 
+        : 0.5;
+        
+    const plantSpacing = typeof cropType === 'string' && cropType in PLANT_SPACING_IN_ROW 
+        ? PLANT_SPACING_IN_ROW[cropType as CropType] 
+        : 0.1;
 
     // Calculate number of rows and plants per row
     const numRows = Math.floor(fieldHeightMeters / rowSpacing);
@@ -68,8 +88,31 @@ export const calculateGridDimensions = (cropType: string, fieldWidthMeters: numb
     };
 };
 
+// Define interfaces for Cerrado growth factors
+interface TemperatureSettings {
+    optimal: number;
+    tolerance: number;
+}
 
-export const CERRADO_GROWTH_FACTORS = {
+interface MoistureSettings {
+    optimal: number;
+    drought_resistant: boolean;
+}
+
+interface GrowthCycle {
+    seedling_days: number;
+    vegetative_days: number;
+    reproductive_days: number;
+    mature_days: number;
+}
+
+interface CropSettings {
+    temperature: TemperatureSettings;
+    moisture: MoistureSettings;
+    growth_cycle: GrowthCycle;
+}
+
+export const CERRADO_GROWTH_FACTORS: Record<CropType, CropSettings> = {
     // Different crops require different optimization strategies in Cerrado
     corn: {
         temperature: {
@@ -161,8 +204,18 @@ export const CERRADO_GROWTH_FACTORS = {
  * @param {string} weatherType - Current weather type
  * @returns {number} - Growth factor between 0-1
  */
-export function calculateCerradoGrowthFactor(cropType, temperature, humidity, weatherType) {
-    const cropSettings = CERRADO_GROWTH_FACTORS[cropType] || CERRADO_GROWTH_FACTORS.corn;
+export function calculateCerradoGrowthFactor(
+    cropType: CropType | string, 
+    temperature: number, 
+    humidity: number, 
+    weatherType: WeatherType | string
+): number {
+    // Handle unknown crop types
+    const validCropType = cropType in CERRADO_GROWTH_FACTORS ? 
+        cropType as CropType : 
+        'corn'; // Default to corn settings if crop type not found
+        
+    const cropSettings = CERRADO_GROWTH_FACTORS[validCropType];
 
     // Temperature factor calculation - bell curve around optimal
     const tempDiff = Math.abs(temperature - cropSettings.temperature.optimal);

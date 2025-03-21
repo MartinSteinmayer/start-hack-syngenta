@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 
-const createRicePlant = (plantHeight) => {
+const createRicePlant = (plantHeight : any) => {
   const plantGroup = new THREE.Group();
   
   // Rice stem
