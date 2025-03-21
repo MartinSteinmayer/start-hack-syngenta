@@ -304,6 +304,40 @@ export default function SimulationPage() {
         setSelectedProduct(product);
         setIsProductsPopupOpen(false);
 
+        // Validate timeline controller initialization
+        if (!timelineController) {
+            setErrorMessage("Cannot apply product: simulation timeline not initialized");
+            setTimeout(() => setErrorMessage(''), 5000);
+            return;
+        }
+
+        // Get current day index for validation
+        const currentDayIndex = timelineController.getCurrentDayIndex() + 1;
+
+        // DUPLICATE CHECK: Verify if this product was already applied on the current day
+        const alreadyAppliedProduct = appliedProducts.find(p =>
+            p.name === product.name && p.appliedAtDay === currentDayIndex
+        );
+
+        // If already applied today, show contextual message and prevent further processing
+        if (alreadyAppliedProduct) {
+            console.log(`Prevented duplicate application of ${product.name} on day ${currentDayIndex}`);
+
+            // Calculate time since last application for better user context
+            const minutesSinceApplication = alreadyAppliedProduct.appliedAt ?
+                Math.round((new Date() - new Date(alreadyAppliedProduct.appliedAt)) / (1000 * 60)) : 0;
+
+            // Provide specific, helpful feedback to the user
+            setErrorMessage(
+                `${product.name} has already been applied today (Day ${currentDayIndex})${minutesSinceApplication > 0 ? ` ${minutesSinceApplication} minutes ago` : ''
+                }. Please advance the timeline to apply it again.`
+            );
+
+            // Auto-clear error message
+            setTimeout(() => setErrorMessage(''), 5000);
+            return;
+        }
+
         // Clear any existing messages
         setErrorMessage('');
         setSuccessMessage('');
@@ -323,7 +357,7 @@ export default function SimulationPage() {
             const productWithMetadata = {
                 ...product,
                 appliedAt: new Date(),
-                appliedAtDay: timelineController ? timelineController.getCurrentDayIndex() + 1 : 1,
+                appliedAtDay: currentDayIndex,
                 effect: {
                     growthRateIncrease: effectData.growth_rate_increase,
                     yieldRisk: effectData.yield_risk,
@@ -673,40 +707,61 @@ export default function SimulationPage() {
                     onSelectProduct={handleProductSelect}
                 />
 
-                {/* Enhanced Applied Products Display - Add this to app/simulation/page.tsx */}
+                {/* Enhanced Applied Products Display with day-specific organization */}
                 {appliedProducts.length > 0 && (
                     <div className="absolute bottom-[250px] right-4 z-20 bg-white bg-opacity-95 p-4 rounded-lg shadow-lg max-w-xs">
                         <h3 className="font-medium text-green-700 mb-2">Applied Products</h3>
-                        <ul className="space-y-3">
-                            {appliedProducts.map((product, index) => (
-                                <li key={index} className="border-b border-gray-100 pb-2 last:border-b-0 last:pb-0">
-                                    <div className="flex items-start">
-                                        <div className="flex items-center mt-0.5">
-                                            <span className="w-2 h-2 bg-green-500 rounded-full mr-2 flex-shrink-0"></span>
-                                        </div>
-                                        <div className="flex-1">
-                                            <div className="font-medium text-sm">{product.name}</div>
-                                            <div className="text-gray-600 text-xs flex flex-wrap">
-                                                <span className="mr-2">{product.category}</span>
-                                                <span>Day {product.appliedAtDay || '?'}</span>
-                                            </div>
 
-                                            {/* Show effects if available */}
-                                            {product.effect && product.effect.growthRateIncrease !== undefined && (
-                                                <div className="mt-1 bg-green-50 p-1.5 rounded text-xs">
-                                                    <div className="flex justify-between text-green-800">
-                                                        <span>Growth boost:</span>
-                                                        <span className="font-medium">
-                                                            +{(product.effect.growthRateIncrease * 100).toFixed(1)}%
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                            )}
+                        {/* Group products by application day for better organization */}
+                        {(() => {
+                            // Create a map of day → products
+                            const productsByDay = appliedProducts.reduce((acc, product) => {
+                                const day = product.appliedAtDay || '?';
+                                if (!acc[day]) acc[day] = [];
+                                acc[day].push(product);
+                                return acc;
+                            }, {});
+
+                            // Sort days in descending order (most recent first)
+                            return Object.keys(productsByDay)
+                                .sort((a, b) => b - a)
+                                .map(day => (
+                                    <div key={day} className="mb-3 last:mb-0">
+                                        <div className="text-xs font-medium text-gray-500 mb-1 border-b border-gray-100">
+                                            Day {day}
                                         </div>
+                                        <ul className="space-y-2">
+                                            {productsByDay[day].map((product, index) => (
+                                                <li key={`${day}-${index}`} className="border-b border-gray-100 pb-2 last:border-b-0 last:pb-0">
+                                                    <div className="flex items-start">
+                                                        <div className="flex items-center mt-0.5">
+                                                            <span className="w-2 h-2 bg-green-500 rounded-full mr-2 flex-shrink-0"></span>
+                                                        </div>
+                                                        <div className="flex-1">
+                                                            <div className="font-medium text-sm">{product.name}</div>
+                                                            <div className="text-gray-600 text-xs flex flex-wrap">
+                                                                <span className="mr-2">{product.category}</span>
+                                                            </div>
+
+                                                            {/* Show effects if available */}
+                                                            {product.effect && product.effect.growthRateIncrease !== undefined && (
+                                                                <div className="mt-1 bg-green-50 p-1.5 rounded text-xs">
+                                                                    <div className="flex justify-between text-green-800">
+                                                                        <span>Growth boost:</span>
+                                                                        <span className="font-medium">
+                                                                            +{(product.effect.growthRateIncrease * 100).toFixed(1)}%
+                                                                        </span>
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </li>
+                                            ))}
+                                        </ul>
                                     </div>
-                                </li>
-                            ))}
-                        </ul>
+                                ));
+                        })()}
 
                         {/* Add totals if multiple products applied */}
                         {appliedProducts.length > 1 && (
