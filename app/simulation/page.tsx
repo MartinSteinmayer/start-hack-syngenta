@@ -858,8 +858,14 @@ export default function SimulationPage() {
             <div className="bg-green-500 py-3 px-4">
                 <div className="container mx-auto max-w-5xl flex justify-between items-center">
                     <div className="flex items-center">
-                        <span className="text-white font-bold text-xl">Farm Bio-Boost</span>
-                        <span className="text-white ml-2">Simulator</span>
+                        <Image 
+                            src="/logo_white.png" 
+                            alt="Crop & Paste" 
+                            width={200} 
+                            height={40} 
+                            className="mr-2"
+                        />
+
                     </div>
                     {/* Powered by Syngenta */}
                     <div className="flex items-center text-sm text-gray-600">
