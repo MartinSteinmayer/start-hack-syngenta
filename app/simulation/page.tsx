@@ -450,7 +450,7 @@ export default function SimulationPage() {
 
                 // If risk is higher than "No risk", show the alert
                 if (riskData.data.riskLevel !== 'No risk' && !droughtRiskShown) {
-                    setTimeout(() => setShowDroughtAlert(true), 3000);
+                    setTimeout(() => setShowDroughtAlert(true), 7000);
                 }
 
                 setDroughtRiskShown(true);
