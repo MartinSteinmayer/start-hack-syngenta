@@ -20,23 +20,35 @@ const SeasonTimelineControls: React.FC<SeasonTimelineControlsProps> = ({
     const [speed, setSpeed] = useState(1);
     const [showWeatherPanel, setShowWeatherPanel] = useState(false);
 
-    // Define the three seasons and their day positions
-    const seasons = {
-        early: { day: Math.floor(totalDays * 0.15), label: "Early Season" },
-        middle: { day: Math.floor(totalDays * 0.5), label: "Mid Season" },
-        late: { day: Math.floor(totalDays * 0.85), label: "Late Season" }
+    // Define the three seasons with contiguous, linear day ranges
+    const seasonBoundaries = {
+        early: {
+            start: 0,
+            end: Math.floor(totalDays / 3) - 1,
+            label: "Early Season"
+        },
+        middle: {
+            start: Math.floor(totalDays / 3),
+            end: Math.floor(totalDays * 2 / 3) - 1,
+            label: "Mid Season"
+        },
+        late: {
+            start: Math.floor(totalDays * 2 / 3),
+            end: totalDays - 1,
+            label: "Late Season"
+        }
     };
 
     // Get current season based on day
     const getCurrentSeason = (day: number) => {
-        if (day < Math.floor(totalDays * 0.33)) return 'early';
-        if (day < Math.floor(totalDays * 0.67)) return 'middle';
+        if (day <= seasonBoundaries.early.end) return 'early';
+        if (day <= seasonBoundaries.middle.end) return 'middle';
         return 'late';
     };
 
-    // Handle season selection
+    // Handle season selection - jumps to the start of the selected season
     const handleSeasonSelect = (seasonKey: string) => {
-        const targetDay = seasons[seasonKey as keyof typeof seasons].day;
+        const targetDay = seasonBoundaries[seasonKey as keyof typeof seasonBoundaries].start;
         setCurrentDay(targetDay);
         controller.setDay(targetDay);
     };
@@ -127,7 +139,6 @@ const SeasonTimelineControls: React.FC<SeasonTimelineControlsProps> = ({
                     )}
                 </div>
 
-
                 {/* Crop Status */}
                 {dayInfo && (
                     <div className="space-y-4">
@@ -186,7 +197,7 @@ const SeasonTimelineControls: React.FC<SeasonTimelineControlsProps> = ({
                 <div className="space-y-4">
                     <h3 className="text-sm font-semibold text-green-200">Season Navigation</h3>
                     <div className="flex flex-col space-y-3">
-                        {Object.entries(seasons).map(([key, data]) => (
+                        {Object.entries(seasonBoundaries).map(([key, data]) => (
                             <button
                                 key={key}
                                 onClick={() => handleSeasonSelect(key)}
@@ -197,11 +208,7 @@ const SeasonTimelineControls: React.FC<SeasonTimelineControlsProps> = ({
                             >
                                 <div className="font-medium">{data.label}</div>
                                 <div className="text-xs mt-1 text-green-200">
-                                    Days {data.day + 1}-{key === 'early' ?
-                                        Math.floor(totalDays * 0.33) :
-                                        key === 'middle' ?
-                                            Math.floor(totalDays * 0.67) :
-                                            totalDays}
+                                    Days {data.start + 1}-{data.end + 1}
                                 </div>
                             </button>
                         ))}
